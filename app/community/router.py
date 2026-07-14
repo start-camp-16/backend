@@ -3,8 +3,18 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query, Response, status
 from sqlalchemy.orm import Session
 
+from app.community.comments import (
+    create_comment,
+    delete_comment,
+    list_comments,
+    update_comment,
+)
 from app.community.posts import create_post, delete_post, get_post, list_posts, update_post
 from app.community.schemas import (
+    CommentCreate,
+    CommentDetail,
+    CommentListResponse,
+    CommentUpdate,
     PasswordRequest,
     PostCreate,
     PostDetail,
@@ -16,6 +26,7 @@ from app.db import get_db
 
 router = APIRouter(prefix="/api")
 PostId = Annotated[int, Path(ge=1)]
+CommentId = Annotated[int, Path(ge=1)]
 
 
 @router.get("/posts", response_model=PostListResponse, operation_id="getPosts")
@@ -67,4 +78,57 @@ def delete(
     session: Annotated[Session, Depends(get_db)],
 ) -> Response:
     delete_post(session, post_id, payload.password)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/posts/{post_id}/comments",
+    response_model=CommentListResponse,
+    operation_id="getComments",
+)
+def comments(
+    post_id: PostId,
+    session: Annotated[Session, Depends(get_db)],
+) -> CommentListResponse:
+    return list_comments(session, post_id)
+
+
+@router.post(
+    "/posts/{post_id}/comments",
+    response_model=CommentDetail,
+    status_code=status.HTTP_201_CREATED,
+    operation_id="createComment",
+)
+def create_post_comment(
+    post_id: PostId,
+    payload: CommentCreate,
+    session: Annotated[Session, Depends(get_db)],
+) -> CommentDetail:
+    return create_comment(session, post_id, payload)
+
+
+@router.put(
+    "/comments/{comment_id}",
+    response_model=CommentDetail,
+    operation_id="updateComment",
+)
+def update_post_comment(
+    comment_id: CommentId,
+    payload: CommentUpdate,
+    session: Annotated[Session, Depends(get_db)],
+) -> CommentDetail:
+    return update_comment(session, comment_id, payload)
+
+
+@router.delete(
+    "/comments/{comment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    operation_id="deleteComment",
+)
+def delete_post_comment(
+    comment_id: CommentId,
+    payload: PasswordRequest,
+    session: Annotated[Session, Depends(get_db)],
+) -> Response:
+    delete_comment(session, comment_id, payload.password)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
