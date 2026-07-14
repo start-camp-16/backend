@@ -10,7 +10,7 @@
 |------|------|------|
 | `region` | string | 수집 지역명 |
 | `contentType` | string | 콘텐츠 유형 한국어명 |
-| `contentTypeId` | string | 콘텐츠 유형 ID (아래 코드 참조) |
+| `contentTypeId` | integer | 콘텐츠 유형 ID (아래 코드 참조) |
 | `total` | integer | 전체 항목 수 |
 | `items` | object[] | POI 항목 배열 |
 
