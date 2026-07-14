@@ -8,7 +8,8 @@
 
 - 한국관광공사 TourAPI의 서울 장소 7개 카테고리, 총 6,518건을 제공합니다.
 - 장소를 서울 구와 카테고리로 필터링합니다.
-- 별도 점수를 계산하지 않고 원본 데이터의 `source_order` 순서로 랭킹을 반환합니다.
+- 구와 카테고리 조합별로 시연용 추천 장소를 최대 5개 제공합니다.
+- 추천과 별도로 전체 장소를 필터링하고 페이지 단위로 조회할 수 있습니다.
 - 장소명, 주소, 좌표, 이미지, 전화번호 등 원본 정보를 제공합니다.
 
 ### 익명 게시판
@@ -46,6 +47,7 @@
 |---|---|
 | 메타데이터 | `GET /api/meta/categories`, `GET /api/meta/districts` |
 | 장소 랭킹 | `GET /api/rankings` |
+| 전체 장소 | `GET /api/locations` |
 | 게시글 | `GET·POST /api/posts`, `GET·PUT·DELETE /api/posts/{post_id}` |
 | 댓글 | `GET·POST /api/posts/{post_id}/comments`, `PUT·DELETE /api/comments/{comment_id}` |
 | 챗봇 | `POST /api/chat` |

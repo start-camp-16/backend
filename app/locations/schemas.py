@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas import Pagination
 
+
 class LocationCategory(StrEnum):
     TOURIST_ATTRACTION = "관광지"
     LEISURE_SPORTS = "레포츠"

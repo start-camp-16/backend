@@ -3,7 +3,7 @@ import json
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 DISTRICT_PATTERN = re.compile(r"(?:서울특별시|서울)\s+([가-힣]+구)(?:\s|$)")
 CATEGORY_KEYWORDS = {
@@ -17,13 +17,20 @@ CATEGORY_KEYWORDS = {
 }
 
 
+class RecommendationOutput(TypedDict):
+    district: str
+    category: str
+    contentIds: list[str]
+
+
 def extract_district(address: object) -> str:
     match = DISTRICT_PATTERN.search(address if isinstance(address, str) else "")
     return match.group(1) if match else "기타"
 
 
 def recommendation_score(category: str, item: dict[str, Any]) -> int:
-    title = item.get("title") if isinstance(item.get("title"), str) else ""
+    raw_title = item.get("title")
+    title = raw_title if isinstance(raw_title, str) else ""
     score = 30 if any(keyword in title for keyword in CATEGORY_KEYWORDS[category]) else 0
     score += 10 if item.get("firstimage") else 0
     score += 5 if item.get("addr1") else 0
@@ -32,7 +39,7 @@ def recommendation_score(category: str, item: dict[str, Any]) -> int:
 
 def build_recommendations(
     sources: list[tuple[str, list[dict[str, Any]]]],
-) -> list[dict[str, object]]:
+) -> list[RecommendationOutput]:
     groups: dict[tuple[str, str], list[tuple[int, int, str]]] = defaultdict(list)
     for category, items in sources:
         for source_order, item in enumerate(items, start=1):
@@ -44,7 +51,7 @@ def build_recommendations(
                 (-recommendation_score(category, item), source_order, content_id)
             )
 
-    recommendations: list[dict[str, object]] = []
+    recommendations: list[RecommendationOutput] = []
     for district, category in sorted(groups):
         candidates = sorted(groups[(district, category)])
         recommendations.append(

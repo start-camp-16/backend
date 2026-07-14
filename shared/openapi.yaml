@@ -3,14 +3,15 @@ info:
   title: 뭐할구 API
   version: 1.0.0
   description: |
-    서울 구별·카테고리별 장소 랭킹, 익명 게시판·댓글, 근거 기반 챗봇을 위한 공유 API 계약입니다.
-    장소 랭킹은 별도 점수 없이 JSON 원본 순서(source_order ASC)를 사용합니다.
+    서울 구별·카테고리별 추천 장소, 전체 장소 목록, 익명 게시판·댓글, 근거 기반 챗봇을 위한 공유 API 계약입니다.
+    장소 랭킹은 시연용으로 선정한 추천 장소를 조합별 최대 5개 반환합니다.
 servers:
   - url: http://localhost:8000
     description: 로컬 개발 서버
 tags:
   - name: Meta
   - name: Rankings
+  - name: Locations
   - name: Posts
   - name: Comments
   - name: Chat
@@ -48,20 +49,39 @@ paths:
     get:
       tags: [Rankings]
       summary: 구·카테고리별 장소 랭킹 조회
-      description: 필터링된 장소를 source_order 오름차순으로 반환합니다.
+      description: 미리 선정한 추천 장소를 1위부터 최대 5개 반환합니다.
       operationId: getRankings
       parameters:
         - $ref: '#/components/parameters/DistrictQuery'
         - $ref: '#/components/parameters/CategoryQueryRequired'
-        - $ref: '#/components/parameters/PageQuery'
-        - $ref: '#/components/parameters/SizeQuery'
       responses:
         '200':
           description: 장소 랭킹
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RankingListResponse'
+                $ref: '#/components/schemas/RankingResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/locations:
+    get:
+      tags: [Locations]
+      summary: 전체 장소 목록 조회
+      operationId: getLocations
+      parameters:
+        - $ref: '#/components/parameters/DistrictQueryOptional'
+        - $ref: '#/components/parameters/CategoryQueryOptional'
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200':
+          description: 필터링된 장소 목록
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationListResponse'
         '400':
           $ref: '#/components/responses/ValidationError'
         '500':
@@ -326,6 +346,22 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/LocationCategory'
+    DistrictQueryOptional:
+      name: district
+      in: query
+      required: false
+      schema:
+        type: [string, 'null']
+        minLength: 1
+      example: 강남구
+    CategoryQueryOptional:
+      name: category
+      in: query
+      required: false
+      schema:
+        anyOf:
+          - $ref: '#/components/schemas/LocationCategory'
+          - type: 'null'
     PageQuery:
       name: page
       in: query
@@ -471,13 +507,10 @@ components:
         total_pages:
           type: integer
           minimum: 0
-    RankingItem:
+    LocationItem:
       type: object
-      required: [rank, content_id, category, title, district, source_order]
+      required: [content_id, category, title, address, district, longitude, latitude, image_url, thumbnail_url, phone]
       properties:
-        rank:
-          type: integer
-          minimum: 1
         content_id:
           type: string
         category:
@@ -500,17 +533,37 @@ components:
           format: uri
         phone:
           type: [string, 'null']
-        source_order:
-          type: integer
-          minimum: 1
-    RankingListResponse:
+    RankingItem:
+      allOf:
+        - $ref: '#/components/schemas/LocationItem'
+        - type: object
+          required: [rank]
+          properties:
+            rank:
+              type: integer
+              minimum: 1
+              maximum: 5
+    RankingResponse:
+      type: object
+      required: [district, category, items]
+      properties:
+        district:
+          type: string
+        category:
+          $ref: '#/components/schemas/LocationCategory'
+        items:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/RankingItem'
+    LocationListResponse:
       type: object
       required: [items, pagination]
       properties:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/RankingItem'
+            $ref: '#/components/schemas/LocationItem'
         pagination:
           $ref: '#/components/schemas/Pagination'
     PostSummary:
