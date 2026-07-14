@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.chat.router import router as chat_router
 from app.community.router import router as community_router
 from app.config import Settings, get_settings
 from app.errors import register_exception_handlers
@@ -20,6 +21,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     register_exception_handlers(app)
     app.include_router(locations_router)
     app.include_router(community_router)
+    app.include_router(chat_router)
     return app
 
 
