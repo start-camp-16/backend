@@ -217,14 +217,14 @@ FastAPI의 기본 요청 검증 오류도 예외 처리기를 통해 HTTP 400과
 
 | 이름 | 목적 | 예시 포함 여부 |
 |---|---|---|
-| `DATABASE_URL` | SQLite 연결 주소 | `.env.example`에 키만 포함 |
+| `DATABASE_URL` | SQLite 연결 주소 | 로컬 `.env`에서 관리 |
 | `OPENAI_API_KEY` | OpenAI 인증 | 실제 값 절대 커밋 금지 |
-| `OPENAI_MODEL` | 사용할 모델명 | `.env.example`에 기본 예시 가능 |
+| `OPENAI_MODEL` | 사용할 모델명 | 로컬 `.env`에서 관리 |
 | `CHAT_LOCATION_LIMIT` | 장소 근거 최대 개수 | 기본 5 |
 | `CHAT_POST_LIMIT` | 게시글 근거 최대 개수 | 기본 5 |
 | `CORS_ORIGINS` | 허용 프론트 Origin 목록 | 쉼표 구분 |
 
-`.env`는 `.gitignore`에 포함하고 `.env.example`에는 비밀값을 넣지 않는다.
+`.env`는 `.gitignore`에 포함하고 실제 값과 비밀정보를 커밋하지 않는다.
 
 ## 10. 테스트 요구사항
 
