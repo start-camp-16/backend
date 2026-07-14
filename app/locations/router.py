@@ -8,9 +8,10 @@ from app.locations.schemas import (
     CategoriesResponse,
     DistrictsResponse,
     LocationCategory,
+    LocationListResponse,
     RankingResponse,
 )
-from app.locations.service import get_rankings, list_categories, list_districts
+from app.locations.service import get_locations, get_rankings, list_categories, list_districts
 
 router = APIRouter(prefix="/api")
 
@@ -47,4 +48,25 @@ def rankings(
         session,
         district=district,
         category=category,
+    )
+
+
+@router.get(
+    "/locations",
+    response_model=LocationListResponse,
+    operation_id="getLocations",
+)
+def locations(
+    session: Annotated[Session, Depends(get_db)],
+    district: Annotated[str | None, Query(min_length=1)] = None,
+    category: Annotated[LocationCategory | None, Query()] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    size: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> LocationListResponse:
+    return get_locations(
+        session,
+        district=district,
+        category=category,
+        page=page,
+        size=size,
     )
