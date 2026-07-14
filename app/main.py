@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import Settings, get_settings
 from app.errors import register_exception_handlers
+from app.locations.router import router as locations_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -16,6 +17,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
     )
     register_exception_handlers(app)
+    app.include_router(locations_router)
     return app
 
 

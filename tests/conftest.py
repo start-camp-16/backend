@@ -3,8 +3,11 @@ from collections.abc import Generator
 import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
+from starlette.testclient import TestClient
 
 from app.db import create_database_engine
+from app.db import get_db as app_get_db
+from app.main import create_app
 from app.models import Base
 
 
@@ -22,3 +25,16 @@ def db_session(db_engine: Engine) -> Generator[Session, None, None]:
     with session_factory() as session:
         yield session
         session.rollback()
+
+
+@pytest.fixture
+def client(db_session: Session) -> Generator[TestClient, None, None]:
+    app = create_app()
+
+    def override_get_db() -> Generator[Session, None, None]:
+        yield db_session
+
+    app.dependency_overrides[app_get_db] = override_get_db
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
