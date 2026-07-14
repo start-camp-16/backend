@@ -11,6 +11,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.chat.router import router as chat_router
+from app.community.bootstrap import ensure_community_mock_data
 from app.community.router import router as community_router
 from app.config import Settings, get_settings
 from app.db import SessionLocal
@@ -27,6 +28,7 @@ def create_app(
     settings: Settings | None = None,
     *,
     bootstrap_locations: bool = False,
+    bootstrap_community: bool = False,
     session_factory: sessionmaker[Session] = SessionLocal,
     location_manifest: str | Path = DEFAULT_LOCATION_MANIFEST,
 ) -> FastAPI:
@@ -37,6 +39,8 @@ def create_app(
         del app
         if bootstrap_locations:
             ensure_location_data(session_factory, location_manifest)
+        if bootstrap_community:
+            ensure_community_mock_data(session_factory)
         yield
 
     app = FastAPI(title="뭐할구 API", version="1.0.0", lifespan=lifespan)
@@ -76,4 +80,4 @@ def create_app(
     return app
 
 
-app = create_app(bootstrap_locations=True)
+app = create_app(bootstrap_locations=True, bootstrap_community=True)
