@@ -1,1 +1,54 @@
-.ranking-hero{padding-bottom:2.5rem}.ranking-hero span{color:var(--primary)}.ranking-workspace{padding:clamp(1rem,3vw,2rem)}.ranking-filter{display:grid;grid-template-columns:1fr 1fr auto;gap:1rem;align-items:end;margin-bottom:2rem}.ranking-filter label{font-weight:800;display:grid;gap:.5rem}.ranking-filter button{min-height:46px}.place-grid{display:grid;gap:.75rem}.place-card{display:grid;grid-template-columns:3.5rem 7rem 1fr;gap:1.2rem;align-items:center;padding:1rem;box-shadow:none}.place-card img{width:7rem;height:5rem;object-fit:cover;border-radius:12px}.rank-number{font-size:2rem;color:var(--primary);text-align:center}.place-card h3{margin:0 0 .35rem}.place-card p{color:var(--muted);margin:.15rem 0;font-size:.9rem}@media(max-width:680px){.ranking-filter{grid-template-columns:1fr}.place-card{grid-template-columns:2.5rem 5rem 1fr}.place-card img{width:5rem;height:4.5rem}.rank-number{font-size:1.35rem}}
+.ranking-hero { padding-bottom: 2.5rem; }
+.ranking-hero span { color: var(--primary); }
+.ranking-workspace { padding: clamp(1rem, 3vw, 2rem); }
+.ranking-filter { display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: end; margin-bottom: 1.4rem; }
+.ranking-filter label { display: grid; gap: .5rem; font-weight: 800; }
+.ranking-filter button { min-height: 46px; }
+
+.ranking-explorer { position: relative; min-height: 520px; height: min(70vh, 720px); overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: #dcead9; }
+.ranking-map { position: absolute; inset: 0; z-index: 0; }
+.ranking-results-panel { position: absolute; z-index: 500; inset: 1rem auto 1rem 1rem; width: min(420px, 40%); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: .65rem; padding: .8rem; overflow: hidden; border: 1px solid rgba(223, 228, 238, .9); border-radius: 16px; background: rgba(255, 255, 255, .94); box-shadow: 0 18px 48px rgba(20, 38, 70, .18); backdrop-filter: blur(14px); }
+.ranking-results-panel .place-grid { overflow-y: auto; overscroll-behavior: contain; padding-right: .25rem; }
+.ranking-results-panel .async-state { background: rgba(255,255,255,.84); }
+.ranking-results-panel .pagination { margin-top: .4rem; }
+.map-status { position: absolute; z-index: 600; right: 1rem; top: 1rem; display: flex; align-items: center; gap: .6rem; max-width: min(28rem, calc(100% - 3rem)); padding: .65rem .8rem; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.94); box-shadow: var(--shadow); color: var(--muted); font-size: .84rem; }
+.map-status:empty { display: none; }
+.map-status button { padding: .45rem .65rem; font-size: .78rem; }
+
+.place-grid { display: grid; gap: .65rem; }
+.place-card { width: 100%; display: grid; grid-template-columns: 2.8rem 5.4rem 1fr; gap: .8rem; align-items: center; padding: .75rem; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); color: var(--text); box-shadow: none; text-align: left; }
+.place-card:hover { background: #f8faff; border-color: #aebdf6; }
+.place-card[aria-current="true"] { background: #f1f5ff; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(49,92,253,.13); }
+.place-card img { width: 5.4rem; height: 4.4rem; object-fit: cover; border-radius: 9px; }
+.place-card .rank-number { color: var(--primary); font-size: 1.45rem; text-align: center; }
+.place-card h3 { margin: 0 0 .25rem; font-size: .98rem; }
+.place-card p { margin: .12rem 0; color: var(--muted); font-size: .78rem; }
+.map-missing { display: inline-block; margin-top: .25rem; color: #805d12; font-size: .72rem; font-weight: 800; }
+
+.ranking-marker { border: 0; background: transparent; }
+.ranking-marker span { display: block; width: 26px; height: 34px; border: 4px solid #fff; border-radius: 50% 50% 50% 5px; background: #69758d; box-shadow: 0 5px 14px rgba(20,35,65,.32); transform: rotate(-45deg); transition: transform .18s ease, background .18s ease; }
+.ranking-marker span::after { content: ""; position: absolute; width: 7px; height: 7px; left: 9px; top: 9px; border-radius: 50%; background: #fff; }
+.ranking-marker--active span { width: 34px; height: 42px; background: var(--primary); transform: rotate(-45deg) scale(1.08); }
+.ranking-marker--active span::after { left: 12px; top: 12px; }
+.leaflet-popup-content strong { color: var(--text); }
+.leaflet-popup-content p { margin: .35rem 0 0; color: var(--muted); }
+.leaflet-control-attribution { font-size: 10px; }
+
+@media (max-width: 720px) {
+  .ranking-filter { grid-template-columns: 1fr; }
+  .ranking-explorer { height: auto; min-height: 0; display: grid; grid-template-rows: 320px auto; overflow: visible; background: transparent; border: 0; gap: .85rem; }
+  .ranking-map { position: relative; inset: auto; width: 100%; height: 320px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .ranking-results-panel { position: static; inset: auto; width: 100%; max-height: none; padding: 0; overflow: visible; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
+  .ranking-results-panel .place-grid { overflow: visible; padding: 0; }
+  .map-status { top: .7rem; right: .7rem; left: .7rem; max-width: none; }
+}
+
+@media (max-width: 480px) {
+  .place-card { grid-template-columns: 2.2rem 4.6rem 1fr; gap: .55rem; }
+  .place-card img { width: 4.6rem; height: 4rem; }
+  .place-card .rank-number { font-size: 1.15rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ranking-marker span { transition: none; }
+}
