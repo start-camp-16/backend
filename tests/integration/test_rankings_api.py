@@ -22,40 +22,42 @@ def seed_rankings(db_session: Session) -> None:
                 source_order=source_order,
             )
         )
-    db_session.add(
-        Location(
-            content_id="other",
-            category="문화시설",
-            title="다른 카테고리",
-            district="강남구",
-            source_order=1,
-        )
-    )
     db_session.commit()
 
 
-def test_rank_continues_across_pages(client: TestClient, db_session: Session):
+def test_rankings_return_configured_top_five_in_order(
+    client: TestClient,
+    db_session: Session,
+    monkeypatch,
+):
     seed_rankings(db_session)
+    monkeypatch.setattr(
+        "app.locations.service.get_default_recommendations",
+        lambda: {("강남구", "관광지"): ("3", "1", "5", "2", "4")},
+    )
 
     response = client.get(
         "/api/rankings",
-        params={"district": "강남구", "category": "관광지", "page": 2, "size": 2},
+        params={"district": "강남구", "category": "관광지"},
     )
 
     assert response.status_code == 200
     payload = response.json()
-    assert [item["rank"] for item in payload["items"]] == [3, 4]
-    assert [item["source_order"] for item in payload["items"]] == [3, 4]
+    assert payload["district"] == "강남구"
+    assert payload["category"] == "관광지"
+    assert [item["content_id"] for item in payload["items"]] == ["3", "1", "5", "2", "4"]
+    assert [item["rank"] for item in payload["items"]] == [1, 2, 3, 4, 5]
     assert payload["items"][0]["address"] == "서울특별시 강남구 테헤란로 3층"
-    assert payload["pagination"] == {
-        "page": 2,
-        "size": 2,
-        "total_items": 5,
-        "total_pages": 3,
-    }
+    assert "pagination" not in payload
+    assert "source_order" not in payload["items"][0]
 
 
-def test_empty_ranking_has_zero_total_pages(client: TestClient):
+def test_empty_ranking_returns_selected_combination(
+    client: TestClient,
+    monkeypatch,
+):
+    monkeypatch.setattr("app.locations.service.get_default_recommendations", lambda: {})
+
     response = client.get(
         "/api/rankings",
         params={"district": "강남구", "category": "관광지"},
@@ -63,8 +65,9 @@ def test_empty_ranking_has_zero_total_pages(client: TestClient):
 
     assert response.status_code == 200
     assert response.json() == {
+        "district": "강남구",
+        "category": "관광지",
         "items": [],
-        "pagination": {"page": 1, "size": 20, "total_items": 0, "total_pages": 0},
     }
 
 
@@ -73,13 +76,8 @@ def test_invalid_ranking_filters_use_validation_error(client: TestClient):
         "/api/rankings",
         params={"district": "강남구", "category": "음식점"},
     )
-    invalid_page = client.get(
-        "/api/rankings",
-        params={"district": "강남구", "category": "관광지", "page": 0},
-    )
     missing_district = client.get("/api/rankings", params={"category": "관광지"})
 
     assert invalid_category.status_code == 400
-    assert invalid_page.status_code == 400
     assert missing_district.status_code == 400
     assert invalid_category.json()["code"] == "VALIDATION_ERROR"

@@ -1,9 +1,13 @@
-from sqlalchemy import func, select
+import logging
+
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.locations.schemas import LocationCategory, RankingItem, RankingListResponse
+from app.locations.recommendations import get_default_recommendations
+from app.locations.schemas import LocationCategory, RankingItem, RankingResponse
 from app.models import Location
-from app.schemas import Pagination
+
+logger = logging.getLogger(__name__)
 
 
 def list_categories() -> list[LocationCategory]:
@@ -20,23 +24,15 @@ def get_rankings(
     *,
     district: str,
     category: LocationCategory,
-    page: int,
-    size: int,
-) -> RankingListResponse:
-    filters = (Location.district == district, Location.category == category.value)
-    total_items = session.scalar(select(func.count()).select_from(Location).where(*filters)) or 0
-    offset = (page - 1) * size
-    query = (
-        select(Location)
-        .where(*filters)
-        .order_by(Location.source_order.asc(), Location.id.asc())
-        .offset(offset)
-        .limit(size)
-    )
-    rows = list(session.scalars(query))
+) -> RankingResponse:
+    content_ids = get_default_recommendations().get((district, category.value), ())
+    rows = list(
+        session.scalars(select(Location).where(Location.content_id.in_(content_ids)))
+    ) if content_ids else []
+    rows_by_content_id = {row.content_id: row for row in rows}
     items = [
         RankingItem(
-            rank=offset + index,
+            rank=rank,
             content_id=row.content_id,
             category=LocationCategory(row.category),
             title=row.title,
@@ -47,17 +43,17 @@ def get_rankings(
             image_url=row.image_url,
             thumbnail_url=row.thumbnail_url,
             phone=row.phone,
-            source_order=row.source_order,
         )
-        for index, row in enumerate(rows, start=1)
+        for rank, content_id in enumerate(content_ids, start=1)
+        if (row := rows_by_content_id.get(content_id)) is not None
     ]
-    total_pages = (total_items + size - 1) // size if total_items else 0
-    return RankingListResponse(
+    if len(items) != len(content_ids):
+        logger.warning(
+            "Some recommended locations were not found",
+            extra={"district": district, "category": category.value},
+        )
+    return RankingResponse(
+        district=district,
+        category=category,
         items=items,
-        pagination=Pagination(
-            page=page,
-            size=size,
-            total_items=total_items,
-            total_pages=total_pages,
-        ),
     )

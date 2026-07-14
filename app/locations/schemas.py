@@ -2,9 +2,6 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas import Pagination
-
-
 class LocationCategory(StrEnum):
     TOURIST_ATTRACTION = "관광지"
     LEISURE_SPORTS = "레포츠"
@@ -23,10 +20,9 @@ class DistrictsResponse(BaseModel):
     items: list[str]
 
 
-class RankingItem(BaseModel):
+class LocationItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    rank: int = Field(ge=1)
     content_id: str
     category: LocationCategory
     title: str
@@ -37,9 +33,13 @@ class RankingItem(BaseModel):
     image_url: str | None
     thumbnail_url: str | None
     phone: str | None
-    source_order: int = Field(ge=1)
 
 
-class RankingListResponse(BaseModel):
+class RankingItem(LocationItem):
+    rank: int = Field(ge=1, le=5)
+
+
+class RankingResponse(BaseModel):
+    district: str
+    category: LocationCategory
     items: list[RankingItem]
-    pagination: Pagination

@@ -8,7 +8,7 @@ from app.locations.schemas import (
     CategoriesResponse,
     DistrictsResponse,
     LocationCategory,
-    RankingListResponse,
+    RankingResponse,
 )
 from app.locations.service import get_rankings, list_categories, list_districts
 
@@ -35,20 +35,16 @@ def get_districts(session: Annotated[Session, Depends(get_db)]) -> DistrictsResp
 
 @router.get(
     "/rankings",
-    response_model=RankingListResponse,
+    response_model=RankingResponse,
     operation_id="getRankings",
 )
 def rankings(
     session: Annotated[Session, Depends(get_db)],
     district: Annotated[str, Query(min_length=1)],
     category: LocationCategory,
-    page: Annotated[int, Query(ge=1)] = 1,
-    size: Annotated[int, Query(ge=1, le=100)] = 20,
-) -> RankingListResponse:
+) -> RankingResponse:
     return get_rankings(
         session,
         district=district,
         category=category,
-        page=page,
-        size=size,
     )
