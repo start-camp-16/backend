@@ -1,0 +1,12 @@
+{
+  "expectedTotal": 6518,
+  "sources": [
+    {"category": "관광지", "contentTypeId": "12", "path": "data/raw/12.json", "expectedCount": 783},
+    {"category": "레포츠", "contentTypeId": "28", "path": "data/raw/28.json", "expectedCount": 126},
+    {"category": "문화시설", "contentTypeId": "14", "path": "data/raw/14.json", "expectedCount": 566},
+    {"category": "쇼핑", "contentTypeId": "38", "path": "data/raw/38.json", "expectedCount": 4368},
+    {"category": "숙박", "contentTypeId": "32", "path": "data/raw/32.json", "expectedCount": 423},
+    {"category": "여행코스", "contentTypeId": "25", "path": "data/raw/25.json", "expectedCount": 51},
+    {"category": "축제공연행사", "contentTypeId": "15", "path": "data/raw/15.json", "expectedCount": 201}
+  ]
+}
