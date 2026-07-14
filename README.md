@@ -1,35 +1,57 @@
 # 뭐할구 Backend
 
-서울 구별 장소 랭킹, 익명 게시글·댓글, 저장소 근거 기반 챗봇을 제공하는 FastAPI 서비스입니다.
+서울 지역 장소 탐색, 익명 커뮤니티, 저장소 근거 기반 챗봇을 제공하는 FastAPI 백엔드입니다.
 
-## Local Development
+## 주요 기능
 
-Python 3.12와 [uv](https://docs.astral.sh/uv/)가 필요합니다.
+### 장소 데이터와 랭킹
 
-```bash
-uv sync --dev
-cp .env.example .env
-uv run alembic upgrade head
-uv run python scripts/import_locations.py --manifest data/manifest.json --verify-total 6518
-uv run uvicorn app.main:app --reload
-```
+- 한국관광공사 TourAPI의 서울 장소 7개 카테고리, 총 6,518건을 제공합니다.
+- 장소를 서울 구와 카테고리로 필터링합니다.
+- 별도 점수를 계산하지 않고 원본 데이터의 `source_order` 순서로 랭킹을 반환합니다.
+- 장소명, 주소, 좌표, 이미지, 전화번호 등 원본 정보를 제공합니다.
 
-API 문서는 서버 실행 후 `http://localhost:8000/docs`에서 확인합니다. API 계약의 기준 파일은 `shared/openapi.yaml`입니다.
+### 익명 게시판
 
-## Verification
+- `관광`, `맛집`, `문화`, `행사`, `숙박`, `쇼핑`, `자유` 태그를 지원합니다.
+- 게시글 목록, 상세 조회, 검색, 작성, 수정, 삭제 기능을 제공합니다.
+- 제목과 본문을 대상으로 부분 일치 검색하며 태그 필터와 함께 사용할 수 있습니다.
+- 수정과 삭제는 게시글 작성 시 설정한 비밀번호로 확인합니다.
 
-```bash
-uv run pytest --cov=app --cov-report=term-missing
-uv run ruff check app scripts tests
-uv run ruff format --check app scripts tests
-uv run mypy app scripts
-```
+### 익명 댓글
 
-## Configuration
+- 게시글별 댓글 목록, 작성, 수정, 삭제 기능을 제공합니다.
+- 댓글은 작성 시각이 빠른 순서로 반환합니다.
+- 수정과 삭제는 댓글 작성 시 설정한 비밀번호로 확인합니다.
+- 게시글 삭제 시 소속 댓글도 함께 삭제됩니다.
 
-`.env.example`을 복사해 DB URL, CORS origin, OpenAI 모델을 설정합니다. 실제 `OPENAI_API_KEY`, `.env`, SQLite 파일은 커밋하지 않습니다. 운영 SQLite는 Render 영속 디스크의 `/var/data/mwohalgu.db`를 사용합니다. 장소 적재 명령은 재실행 가능하며 기존 `content_id`를 갱신합니다.
+### 근거 기반 챗봇
 
-## Data Source
+- 사용자 메시지에서 서울 구, 장소 카테고리, 게시글 태그, 검색어를 추출합니다.
+- 장소와 게시글 검색 결과를 근거로 OpenAI 답변을 생성합니다.
+- 답변에 사용한 장소와 게시글을 `sources`로 함께 반환합니다.
+- 검색 근거가 없는 내용을 추측하지 않도록 시스템 지침을 적용합니다.
+- 대화 내용은 서버 DB에 저장하지 않습니다.
+
+### API 계약과 오류 처리
+
+- 기준 API 계약은 `shared/openapi.yaml`입니다.
+- 입력 오류, 비밀번호 불일치, 리소스 미존재, 챗봇 제공자 오류를 공통 오류 형식으로 반환합니다.
+- 비밀번호와 OpenAI API 키는 API 응답 및 요청 로그에 포함하지 않습니다.
+- `/api/health`에서 애플리케이션과 DB 연결 상태를 확인할 수 있습니다.
+
+## API 구성
+
+| 영역 | 주요 API |
+|---|---|
+| 메타데이터 | `GET /api/meta/categories`, `GET /api/meta/districts` |
+| 장소 랭킹 | `GET /api/rankings` |
+| 게시글 | `GET·POST /api/posts`, `GET·PUT·DELETE /api/posts/{post_id}` |
+| 댓글 | `GET·POST /api/posts/{post_id}/comments`, `PUT·DELETE /api/comments/{comment_id}` |
+| 챗봇 | `POST /api/chat` |
+| 상태 확인 | `GET /api/health` |
+
+## 데이터 출처
 
 이 서비스는 한국관광공사 Tour API(TourAPI 4.0)의 데이터를 활용하였습니다.
 
