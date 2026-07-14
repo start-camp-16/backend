@@ -1,26 +1,45 @@
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
+from pathlib import Path
 from time import perf_counter
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session, sessionmaker
 from starlette.requests import Request
 from starlette.responses import Response
 
 from app.chat.router import router as chat_router
 from app.community.router import router as community_router
 from app.config import Settings, get_settings
+from app.db import SessionLocal
 from app.errors import register_exception_handlers
 from app.health import router as health_router
+from app.locations.bootstrap import DEFAULT_LOCATION_MANIFEST, ensure_location_data
 from app.locations.router import router as locations_router
 from app.openapi import install_canonical_openapi
 
 logger = logging.getLogger(__name__)
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    bootstrap_locations: bool = False,
+    session_factory: sessionmaker[Session] = SessionLocal,
+    location_manifest: str | Path = DEFAULT_LOCATION_MANIFEST,
+) -> FastAPI:
     resolved_settings = settings or get_settings()
-    app = FastAPI(title="뭐할구 API", version="1.0.0")
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        del app
+        if bootstrap_locations:
+            ensure_location_data(session_factory, location_manifest)
+        yield
+
+    app = FastAPI(title="뭐할구 API", version="1.0.0", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=resolved_settings.cors_origin_list,
@@ -57,4 +76,4 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     return app
 
 
-app = create_app()
+app = create_app(bootstrap_locations=True)
