@@ -1,0 +1,10 @@
+import { request } from '../../api/client.js';
+export const getPosts = ({ tag, q, page=1, size=20, signal }={}) => request('/api/posts',{query:{tag,q,page,size},signal});
+export const createPost = (body,{signal}={}) => request('/api/posts',{method:'POST',body,signal});
+export const getPost = (id,{signal}={}) => request(`/api/posts/${id}`,{signal});
+export const updatePost = (id,body,{signal}={}) => request(`/api/posts/${id}`,{method:'PUT',body,signal});
+export const deletePost = (id,body,{signal}={}) => request(`/api/posts/${id}`,{method:'DELETE',body,signal});
+export const getComments = (id,{signal}={}) => request(`/api/posts/${id}/comments`,{signal});
+export const createComment = (id,body,{signal}={}) => request(`/api/posts/${id}/comments`,{method:'POST',body,signal});
+export const updateComment = (id,body,{signal}={}) => request(`/api/comments/${id}`,{method:'PUT',body,signal});
+export const deleteComment = (id,body,{signal}={}) => request(`/api/comments/${id}`,{method:'DELETE',body,signal});

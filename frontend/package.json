@@ -1,0 +1,24 @@
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "description": "서울 지역 장소 랭킹, 익명 커뮤니티, 지역 정보 챗봇",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "jsdom": "^29.1.1",
+    "vite": "^8.1.4",
+    "vitest": "^4.1.10"
+  }
+}
