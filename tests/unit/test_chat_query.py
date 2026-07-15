@@ -36,3 +36,20 @@ def test_query_extracts_shared_location_category_and_post_prefix(shared_classifi
     assert parsed.location_category == shared_classification
     assert parsed.post_prefix == shared_classification
     assert parsed.keywords == ()
+
+
+@pytest.mark.parametrize(
+    ("message", "expected_location_category", "expected_post_prefix"),
+    [
+        ("문화시설 쇼핑", "문화시설", "쇼핑"),
+        ("쇼핑 자유", "쇼핑", "자유"),
+    ],
+)
+def test_query_extracts_distinct_mixed_classifications(
+    message: str, expected_location_category: str, expected_post_prefix: str
+):
+    parsed = parse_query(message)
+
+    assert parsed.location_category == expected_location_category
+    assert parsed.post_prefix == expected_post_prefix
+    assert parsed.keywords == ()

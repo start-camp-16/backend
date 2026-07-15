@@ -194,3 +194,61 @@ def test_shared_classification_filters_each_source_independently(
 
     assert [location.category for location in context.locations] == [shared_classification]
     assert [post.prefix for post in context.posts] == [shared_classification]
+
+
+@pytest.mark.parametrize(
+    ("message", "expected_location_category", "expected_post_prefix"),
+    [
+        ("문화시설 쇼핑", "문화시설", "쇼핑"),
+        ("쇼핑 자유", "쇼핑", "자유"),
+    ],
+)
+def test_mixed_classifications_filter_each_source_independently(
+    db_session: Session,
+    message: str,
+    expected_location_category: str,
+    expected_post_prefix: str,
+):
+    db_session.add_all(
+        [
+            Location(
+                content_id=f"location-{expected_location_category}",
+                category=expected_location_category,
+                title="분류 일치 장소",
+                district="강남구",
+                source_order=1,
+            ),
+            Location(
+                content_id="location-decoy",
+                category="숙박",
+                title="분류 불일치 장소",
+                district="강남구",
+                source_order=2,
+            ),
+            Post(
+                district="강남구",
+                prefix=expected_post_prefix,
+                title="분류 일치 게시글",
+                content="일치",
+                password="1234",
+            ),
+            Post(
+                district="강남구",
+                prefix="숙박",
+                title="분류 불일치 게시글",
+                content="불일치",
+                password="1234",
+            ),
+        ]
+    )
+    db_session.commit()
+
+    context = retrieve_sources(
+        db_session,
+        parse_query(message),
+        location_limit=5,
+        post_limit=5,
+    )
+
+    assert [location.category for location in context.locations] == [expected_location_category]
+    assert [post.prefix for post in context.posts] == [expected_post_prefix]

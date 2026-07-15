@@ -36,15 +36,10 @@ def _extract_first(text: str, candidates: tuple[str, ...]) -> tuple[str | None, 
 def parse_query(message: str) -> ParsedQuery:
     remainder = message
     district, remainder = _extract_first(remainder, POST_DISTRICTS)
-    shared_classification, remainder = _extract_first(remainder, SHARED_CLASSIFICATIONS)
-    location_category: str | None
-    post_prefix: str | None
-    if shared_classification:
-        location_category = shared_classification
-        post_prefix = shared_classification
-    else:
-        location_category, remainder = _extract_first(remainder, LOCATION_CATEGORIES)
-        post_prefix, remainder = _extract_first(remainder, POST_PREFIXES)
+    location_category, remainder = _extract_first(remainder, LOCATION_CATEGORIES)
+    post_prefix, remainder = _extract_first(remainder, POST_PREFIXES)
+    if location_category in SHARED_CLASSIFICATIONS and post_prefix is None:
+        post_prefix = location_category
     for phrase in IGNORED_PHRASES:
         remainder = remainder.replace(phrase, " ")
     normalized = re.sub(r"[^0-9A-Za-z가-힣]+", " ", remainder)
