@@ -420,7 +420,7 @@ paths:
     post:
       tags: [Chat]
       summary: 서울 지역 정보 챗봇 질의
-      description: 장소와 게시글 검색 결과를 근거로 OpenAI 답변을 생성합니다.
+      description: 장소와 게시글 검색 결과를 우선 활용하고 일반 지식으로 보완해 OpenAI 답변을 생성합니다.
       operationId: chat
       requestBody:
         required: true
