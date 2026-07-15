@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi import FastAPI
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 from starlette.testclient import TestClient
 
@@ -173,3 +174,52 @@ def test_admin_shows_empty_state_and_clamps_page(
     assert beyond.status_code == 200
     assert "1 / 1 페이지" in beyond.text
     assert "코스 01" in beyond.text
+
+
+def test_admin_force_deletes_course_without_author_password(
+    admin_client_factory: Callable[[str | None], TestClient],
+    db_session: Session,
+):
+    seed_admin_courses(db_session, count=1)
+    client = admin_client_factory("operator-pass")
+
+    response = client.post(
+        "/admin/courses/00000000000000000000000000000000/delete",
+        params={"q": "코스", "page": 2},
+        auth=("admin", "operator-pass"),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/admin/courses?page=2&q=%EC%BD%94%EC%8A%A4"
+    assert db_session.scalar(select(func.count(Course.id))) == 0
+    assert db_session.scalar(select(func.count(CourseStop.id))) == 0
+
+
+def test_admin_delete_requires_admin_credentials(
+    admin_client_factory: Callable[[str | None], TestClient],
+    db_session: Session,
+):
+    seed_admin_courses(db_session, count=1)
+    client = admin_client_factory("operator-pass")
+
+    response = client.post(
+        "/admin/courses/00000000000000000000000000000000/delete"
+    )
+
+    assert response.status_code == 401
+    assert db_session.scalar(select(func.count(Course.id))) == 1
+
+
+def test_admin_delete_returns_not_found_for_missing_course(
+    admin_client_factory: Callable[[str | None], TestClient],
+):
+    client = admin_client_factory("operator-pass")
+
+    response = client.post(
+        "/admin/courses/ffffffffffffffffffffffffffffffff/delete",
+        auth=("admin", "operator-pass"),
+    )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "COURSE_NOT_FOUND"
