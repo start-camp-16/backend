@@ -5,12 +5,13 @@ from app.community.classifications import PostDistrict, PostPrefix
 from app.community.schemas import (
     PostCreate,
     PostDetail,
+    PostListItem,
     PostListResponse,
     PostSummary,
     PostUpdate,
 )
 from app.errors import AppError
-from app.models import Post
+from app.models import Comment, Post
 from app.schemas import Pagination
 
 
@@ -80,18 +81,24 @@ def list_posts(
         )
 
     total_items = session.scalar(select(func.count()).select_from(Post).where(*filters)) or 0
-    rows = list(
-        session.scalars(
-            select(Post)
-            .where(*filters)
-            .order_by(Post.created_at.desc(), Post.id.desc())
-            .offset((page - 1) * size)
-            .limit(size)
-        )
-    )
+    rows = session.execute(
+        select(Post, func.count(Comment.id).label("comment_count"))
+        .outerjoin(Comment, Comment.post_id == Post.id)
+        .where(*filters)
+        .group_by(Post.id)
+        .order_by(Post.created_at.desc(), Post.id.desc())
+        .offset((page - 1) * size)
+        .limit(size)
+    ).all()
     total_pages = (total_items + size - 1) // size if total_items else 0
     return PostListResponse(
-        items=[PostSummary.model_validate(post) for post in rows],
+        items=[
+            PostListItem(
+                **PostSummary.model_validate(post).model_dump(),
+                comment_count=comment_count,
+            )
+            for post, comment_count in rows
+        ],
         pagination=Pagination(
             page=page,
             size=size,

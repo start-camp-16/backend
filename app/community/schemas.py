@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.community.classifications import PostDistrict, PostPrefix
 from app.schemas import Pagination
@@ -65,12 +65,16 @@ class PostSummary(BaseModel):
     updated_at: datetime
 
 
+class PostListItem(PostSummary):
+    comment_count: int = Field(ge=0)
+
+
 class PostDetail(PostSummary):
     content: str
 
 
 class PostListResponse(BaseModel):
-    items: list[PostSummary]
+    items: list[PostListItem]
     pagination: Pagination
 
 
