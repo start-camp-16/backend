@@ -12,7 +12,7 @@ from starlette.responses import Response
 
 from app.admin.app import create_admin_app
 from app.chat.router import router as chat_router
-from app.community.bootstrap import ensure_community_mock_data
+from app.community.bootstrap import reset_community_mock_data
 from app.community.router import router as community_router
 from app.config import Settings, get_settings
 from app.courses.router import router as courses_router
@@ -42,7 +42,7 @@ def create_app(
         if bootstrap_locations:
             ensure_location_data(session_factory, location_manifest)
         if bootstrap_community:
-            ensure_community_mock_data(session_factory)
+            reset_community_mock_data(session_factory)
         yield
 
     app = FastAPI(title="뭐할구 API", version="1.0.0", lifespan=lifespan)
