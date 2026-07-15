@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from starlette.requests import Request
 from starlette.responses import Response
 
+from app.admin.app import create_admin_app
 from app.chat.router import router as chat_router
 from app.community.bootstrap import ensure_community_mock_data
 from app.community.router import router as community_router
@@ -45,6 +46,7 @@ def create_app(
         yield
 
     app = FastAPI(title="뭐할구 API", version="1.0.0", lifespan=lifespan)
+    app.state.settings = resolved_settings
     app.add_middleware(
         CORSMiddleware,
         allow_origins=resolved_settings.cors_origin_list,
@@ -78,6 +80,7 @@ def create_app(
     app.include_router(community_router)
     app.include_router(chat_router)
     app.include_router(health_router)
+    app.mount("/admin", create_admin_app(resolved_settings, session_factory))
     install_canonical_openapi(app)
     return app
 

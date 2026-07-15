@@ -6,6 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     database_url: str = "sqlite:///./mwohalgu.db"
+    admin_password: SecretStr | None = None
     openai_api_key: SecretStr | None = None
     openai_model: str = "gpt-5.4-mini"
     chat_location_limit: int = Field(default=5, ge=1, le=20)
