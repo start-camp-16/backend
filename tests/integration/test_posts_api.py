@@ -41,11 +41,13 @@ def test_create_and_get_post_never_expose_password(client: TestClient):
     assert created.status_code == 201
     assert created.json()["title"] == "제목"
     assert created.json()["content"] == "본문"
+    assert "comment_count" not in created.json()
     assert "password" not in json.dumps(created.json())
 
     fetched = client.get(f"/api/posts/{created.json()['id']}")
     assert fetched.status_code == 200
     assert fetched.json() == created.json()
+    assert "comment_count" not in fetched.json()
     assert "password" not in json.dumps(fetched.json())
 
 
@@ -186,6 +188,7 @@ def test_update_requires_matching_password(client: TestClient):
     assert updated.json()["district"] == "마포구"
     assert updated.json()["prefix"] == "문화"
     assert updated.json()["title"] == "수정 제목"
+    assert "comment_count" not in updated.json()
 
 
 def test_delete_requires_matching_password(
