@@ -889,6 +889,15 @@ components:
         updated_at:
           type: string
           format: date-time
+    PostListItem:
+      allOf:
+        - $ref: '#/components/schemas/PostSummary'
+        - type: object
+          required: [comment_count]
+          properties:
+            comment_count:
+              type: integer
+              minimum: 0
     PostDetail:
       allOf:
         - $ref: '#/components/schemas/PostSummary'
@@ -904,7 +913,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/PostSummary'
+            $ref: '#/components/schemas/PostListItem'
         pagination:
           $ref: '#/components/schemas/Pagination'
     PostCreateRequest:

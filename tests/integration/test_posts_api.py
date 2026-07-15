@@ -28,17 +28,26 @@ def create_post(
     )
 
 
+def create_comment(client: TestClient, post_id: int, content: str = "댓글"):
+    return client.post(
+        f"/api/posts/{post_id}/comments",
+        json={"content": content, "password": "5678"},
+    )
+
+
 def test_create_and_get_post_never_expose_password(client: TestClient):
     created = create_post(client, title=" 제목 ", content=" 본문 ")
 
     assert created.status_code == 201
     assert created.json()["title"] == "제목"
     assert created.json()["content"] == "본문"
+    assert "comment_count" not in created.json()
     assert "password" not in json.dumps(created.json())
 
     fetched = client.get(f"/api/posts/{created.json()['id']}")
     assert fetched.status_code == 200
     assert fetched.json() == created.json()
+    assert "comment_count" not in fetched.json()
     assert "password" not in json.dumps(fetched.json())
 
 
@@ -72,6 +81,43 @@ def test_list_combines_district_prefix_search_and_pagination(client: TestClient)
         "total_items": 2,
         "total_pages": 2,
     }
+
+
+def test_list_includes_comment_count_for_filtered_search_results(client: TestClient):
+    commented = create_post(
+        client,
+        district="강남구",
+        prefix="관광",
+        title="댓글 집계 명소",
+    ).json()
+    uncommented = create_post(
+        client,
+        district="강남구",
+        prefix="관광",
+        title="댓글 집계 산책",
+    ).json()
+    excluded = create_post(
+        client,
+        district="마포구",
+        prefix="관광",
+        title="댓글 집계 공원",
+    ).json()
+    create_comment(client, commented["id"], "첫 댓글")
+    create_comment(client, commented["id"], "둘째 댓글")
+    create_comment(client, excluded["id"], "제외 댓글")
+
+    response = client.get(
+        "/api/posts",
+        params={"district": "강남구", "prefix": "관광", "q": "댓글 집계"},
+    )
+
+    assert response.status_code == 200
+    counts = {item["id"]: item["comment_count"] for item in response.json()["items"]}
+    assert counts == {commented["id"]: 2, uncommented["id"]: 0}
+
+    detail = client.get(f"/api/posts/{commented['id']}")
+    assert detail.status_code == 200
+    assert "comment_count" not in detail.json()
 
 
 def test_list_without_district_returns_all_districts(client: TestClient):
@@ -142,6 +188,7 @@ def test_update_requires_matching_password(client: TestClient):
     assert updated.json()["district"] == "마포구"
     assert updated.json()["prefix"] == "문화"
     assert updated.json()["title"] == "수정 제목"
+    assert "comment_count" not in updated.json()
 
 
 def test_delete_requires_matching_password(

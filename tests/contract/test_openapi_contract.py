@@ -56,7 +56,7 @@ def test_runtime_openapi_is_the_canonical_contract():
     assert response.json() == load_contract()
 
 
-def test_post_contract_uses_district_and_prefix_and_removes_tag():
+def test_post_contract_defines_classifications_and_list_comment_count():
     document = load_contract()
     schemas = document["components"]["schemas"]
     list_parameters = document["paths"]["/api/posts"]["get"]["parameters"]
@@ -79,3 +79,17 @@ def test_post_contract_uses_district_and_prefix_and_removes_tag():
     assert set(schemas["PostCreateRequest"]["required"]) >= {"district", "prefix"}
     assert "tag" not in schemas["PostCreateRequest"]["properties"]
     assert set(schemas["PostSource"]["required"]) >= {"district", "prefix"}
+
+    list_item = schemas["PostListItem"]
+    list_item_extension = list_item["allOf"][1]
+
+    assert list_item["allOf"][0] == {"$ref": "#/components/schemas/PostSummary"}
+    assert "comment_count" in list_item_extension["required"]
+    assert list_item_extension["properties"]["comment_count"] == {
+        "type": "integer",
+        "minimum": 0,
+    }
+    assert schemas["PostListResponse"]["properties"]["items"]["items"] == {
+        "$ref": "#/components/schemas/PostListItem"
+    }
+    assert "comment_count" not in schemas["PostSummary"]["properties"]
