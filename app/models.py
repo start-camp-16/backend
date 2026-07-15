@@ -13,6 +13,8 @@ from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import TypeDecorator
 
+from app.community.classifications import POST_DISTRICTS, POST_PREFIXES
+
 LOCATION_CATEGORIES = (
     "관광지",
     "레포츠",
@@ -22,7 +24,10 @@ LOCATION_CATEGORIES = (
     "여행코스",
     "축제공연행사",
 )
-POST_TAGS = ("관광", "맛집", "문화", "행사", "숙박", "쇼핑", "자유")
+
+
+def sql_string_values(values: tuple[str, ...]) -> str:
+    return ",".join(f"'{value}'" for value in values)
 
 
 def utc_now() -> datetime:
@@ -87,18 +92,24 @@ class Post(Base):
     __tablename__ = "posts"
     __table_args__ = (
         CheckConstraint(
-            "tag IN ('관광','맛집','문화','행사','숙박','쇼핑','자유')",
-            name="ck_posts_tag",
+            f"district IN ({sql_string_values(POST_DISTRICTS)})",
+            name="ck_posts_district",
+        ),
+        CheckConstraint(
+            f"prefix IN ({sql_string_values(POST_PREFIXES)})",
+            name="ck_posts_prefix",
         ),
         CheckConstraint("length(title) BETWEEN 1 AND 100", name="ck_posts_title_length"),
         CheckConstraint("length(content) BETWEEN 1 AND 5000", name="ck_posts_content_length"),
         CheckConstraint("length(password) BETWEEN 4 AND 20", name="ck_posts_password_length"),
         Index("ix_posts_created_at", "created_at"),
-        Index("ix_posts_tag", "tag"),
+        Index("ix_posts_district", "district"),
+        Index("ix_posts_prefix", "prefix"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    tag: Mapped[str] = mapped_column(String(10), nullable=False)
+    district: Mapped[str] = mapped_column(String(10), nullable=False)
+    prefix: Mapped[str] = mapped_column(String(10), nullable=False)
     title: Mapped[str] = mapped_column(String(100), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     password: Mapped[str] = mapped_column(String(20), nullable=False)

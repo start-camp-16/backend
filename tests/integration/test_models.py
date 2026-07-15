@@ -42,7 +42,13 @@ def test_location_ranking_index_has_expected_column_order(db_engine):
 
 
 def test_deleting_post_cascades_comments(db_session: Session):
-    post = Post(tag="자유", title="제목", content="본문", password="1234")
+    post = Post(
+        district="강남구",
+        prefix="자유",
+        title="제목",
+        content="본문",
+        password="1234",
+    )
     post.comments.append(Comment(content="댓글", password="5678"))
     db_session.add(post)
     db_session.commit()
@@ -54,13 +60,47 @@ def test_deleting_post_cascades_comments(db_session: Session):
 
 
 def test_post_timestamps_are_utc(db_session: Session):
-    post = Post(tag="자유", title="제목", content="본문", password="1234")
+    post = Post(
+        district="강남구",
+        prefix="자유",
+        title="제목",
+        content="본문",
+        password="1234",
+    )
     db_session.add(post)
     db_session.commit()
     db_session.refresh(post)
 
     assert post.created_at.tzinfo is UTC
     assert post.updated_at.tzinfo is UTC
+
+
+def test_post_classification_indexes_exist(db_engine):
+    indexes = {index["name"] for index in inspect(db_engine).get_indexes("posts")}
+
+    assert "ix_posts_district" in indexes
+    assert "ix_posts_prefix" in indexes
+
+
+@pytest.mark.parametrize(
+    ("district", "prefix"),
+    [("기타", "자유"), ("강남구", "공지")],
+)
+def test_post_rejects_invalid_classification(
+    db_session: Session, district: str, prefix: str
+):
+    db_session.add(
+        Post(
+            district=district,
+            prefix=prefix,
+            title="제목",
+            content="본문",
+            password="1234",
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        db_session.commit()
 
 
 def test_deleting_course_cascades_stops(db_session: Session):
