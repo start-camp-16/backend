@@ -214,11 +214,16 @@ paths:
       summary: 게시글 목록·검색
       operationId: getPosts
       parameters:
-        - name: tag
+        - name: district
           in: query
           required: false
           schema:
-            $ref: '#/components/schemas/PostTag'
+            $ref: '#/components/schemas/PostDistrict'
+        - name: prefix
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/PostPrefix'
         - name: q
           in: query
           required: false
@@ -619,7 +624,35 @@ components:
     LocationCategory:
       type: string
       enum: [관광지, 레포츠, 문화시설, 쇼핑, 숙박, 여행코스, 축제공연행사]
-    PostTag:
+    PostDistrict:
+      type: string
+      enum:
+        - 강남구
+        - 강동구
+        - 강북구
+        - 강서구
+        - 관악구
+        - 광진구
+        - 구로구
+        - 금천구
+        - 노원구
+        - 도봉구
+        - 동대문구
+        - 동작구
+        - 마포구
+        - 서대문구
+        - 서초구
+        - 성동구
+        - 성북구
+        - 송파구
+        - 양천구
+        - 영등포구
+        - 용산구
+        - 은평구
+        - 종로구
+        - 중구
+        - 중랑구
+    PostPrefix:
       type: string
       enum: [관광, 맛집, 문화, 행사, 숙박, 쇼핑, 자유]
     CategoriesResponse:
@@ -840,12 +873,14 @@ components:
           minimum: 0
     PostSummary:
       type: object
-      required: [id, tag, title, created_at, updated_at]
+      required: [id, district, prefix, title, created_at, updated_at]
       properties:
         id:
           type: integer
-        tag:
-          $ref: '#/components/schemas/PostTag'
+        district:
+          $ref: '#/components/schemas/PostDistrict'
+        prefix:
+          $ref: '#/components/schemas/PostPrefix'
         title:
           type: string
         created_at:
@@ -875,10 +910,12 @@ components:
     PostCreateRequest:
       type: object
       additionalProperties: false
-      required: [tag, title, content, password]
+      required: [district, prefix, title, content, password]
       properties:
-        tag:
-          $ref: '#/components/schemas/PostTag'
+        district:
+          $ref: '#/components/schemas/PostDistrict'
+        prefix:
+          $ref: '#/components/schemas/PostPrefix'
         title:
           type: string
           minLength: 1
@@ -895,15 +932,17 @@ components:
     PostUpdateRequest:
       type: object
       additionalProperties: false
-      required: [password, tag, title, content]
+      required: [password, district, prefix, title, content]
       properties:
         password:
           type: string
           minLength: 4
           maxLength: 20
           writeOnly: true
-        tag:
-          $ref: '#/components/schemas/PostTag'
+        district:
+          $ref: '#/components/schemas/PostDistrict'
+        prefix:
+          $ref: '#/components/schemas/PostPrefix'
         title:
           type: string
           minLength: 1
@@ -1019,7 +1058,7 @@ components:
           type: [string, 'null']
     PostSource:
       type: object
-      required: [type, post_id, title, tag]
+      required: [type, post_id, title, district, prefix]
       properties:
         type:
           const: post
@@ -1027,8 +1066,10 @@ components:
           type: integer
         title:
           type: string
-        tag:
-          $ref: '#/components/schemas/PostTag'
+        district:
+          $ref: '#/components/schemas/PostDistrict'
+        prefix:
+          $ref: '#/components/schemas/PostPrefix'
     ChatSource:
       oneOf:
         - $ref: '#/components/schemas/LocationSource'

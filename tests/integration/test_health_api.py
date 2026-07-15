@@ -18,7 +18,13 @@ def test_request_log_contains_metadata_without_body(client: TestClient, caplog):
 
     client.post(
         "/api/posts",
-        json={"tag": "자유", "title": "제목", "content": "본문", "password": "secret-1234"},
+        json={
+            "district": "강남구",
+            "prefix": "자유",
+            "title": "제목",
+            "content": "본문",
+            "password": "secret-1234",
+        },
     )
 
     records = [record for record in caplog.records if record.message == "Request completed"]

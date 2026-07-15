@@ -75,6 +75,12 @@ def answer_chat(
         for item in context.locations
     ]
     sources.extend(
-        PostSource(post_id=item.post_id, title=item.title, tag=item.tag) for item in context.posts
+        PostSource(
+            post_id=item.post_id,
+            title=item.title,
+            district=item.district,
+            prefix=item.prefix,
+        )
+        for item in context.posts
     )
     return ChatResponse(answer=answer, sources=sources)

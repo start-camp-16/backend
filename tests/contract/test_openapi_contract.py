@@ -54,3 +54,28 @@ def test_runtime_openapi_is_the_canonical_contract():
 
     assert response.status_code == 200
     assert response.json() == load_contract()
+
+
+def test_post_contract_uses_district_and_prefix_and_removes_tag():
+    document = load_contract()
+    schemas = document["components"]["schemas"]
+    list_parameters = document["paths"]["/api/posts"]["get"]["parameters"]
+
+    assert schemas["PostDistrict"]["enum"] == [
+        "강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구",
+        "금천구", "노원구", "도봉구", "동대문구", "동작구", "마포구", "서대문구",
+        "서초구", "성동구", "성북구", "송파구", "양천구", "영등포구", "용산구",
+        "은평구", "종로구", "중구", "중랑구",
+    ]
+    assert schemas["PostPrefix"]["enum"] == [
+        "관광", "맛집", "문화", "행사", "숙박", "쇼핑", "자유"
+    ]
+    assert "PostTag" not in schemas
+    parameter_names = {
+        parameter["name"] for parameter in list_parameters if "name" in parameter
+    }
+    assert parameter_names >= {"district", "prefix"}
+    assert "tag" not in parameter_names
+    assert set(schemas["PostCreateRequest"]["required"]) >= {"district", "prefix"}
+    assert "tag" not in schemas["PostCreateRequest"]["properties"]
+    assert set(schemas["PostSource"]["required"]) >= {"district", "prefix"}

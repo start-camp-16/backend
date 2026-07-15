@@ -1,4 +1,5 @@
-from datetime import UTC, datetime
+from collections import Counter
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import func, select
@@ -9,14 +10,18 @@ from starlette.testclient import TestClient
 
 from app.community.bootstrap import (
     COMMUNITY_MOCK_POSTS,
+    MOCK_DATA_STARTED_AT,
     MockPostSeed,
     ensure_community_mock_data,
 )
+from app.community.classifications import POST_DISTRICTS, POST_PREFIXES
 from app.main import create_app
-from app.models import POST_TAGS, Comment, Post
+from app.models import Comment, Post
 
 
-def test_empty_database_gets_twenty_fixed_posts_and_comments(db_engine: Engine) -> None:
+def test_empty_database_gets_three_posts_per_district_and_fixed_comments(
+    db_engine: Engine,
+) -> None:
     session_factory = sessionmaker(bind=db_engine, expire_on_commit=False)
 
     inserted = ensure_community_mock_data(session_factory)
@@ -28,14 +33,19 @@ def test_empty_database_gets_twenty_fixed_posts_and_comments(db_engine: Engine) 
             )
         )
 
-    assert inserted == 20
-    assert len(posts) == 20
-    assert {post.tag for post in posts} == set(POST_TAGS)
+    assert inserted == 75
+    assert len(posts) == 75
+    assert Counter(post.district for post in posts) == Counter(
+        {district: 3 for district in POST_DISTRICTS}
+    )
+    assert set(post.prefix for post in posts) == set(POST_PREFIXES)
+    assert set(Counter(post.prefix for post in posts).values()) == {10, 11}
+    assert sum(len(post.comments) for post in posts) == 25
+    assert [len(post.comments) for post in posts] == [1, 0, 0] * len(POST_DISTRICTS)
     assert all(post.password == "mock1234" for post in posts)
-    assert all(0 <= len(post.comments) <= 3 for post in posts)
     assert all(comment.password == "mock1234" for post in posts for comment in post.comments)
     assert [post.created_at for post in posts] == [
-        datetime(2025, 1, day, 3, tzinfo=UTC) for day in range(1, 21)
+        MOCK_DATA_STARTED_AT + timedelta(days=post_index) for post_index in range(75)
     ]
     assert all(comment.created_at > post.created_at for post in posts for comment in post.comments)
 
@@ -47,7 +57,7 @@ def test_second_bootstrap_does_not_duplicate_data(db_engine: Engine) -> None:
     inserted = ensure_community_mock_data(session_factory)
 
     with session_factory() as session:
-        assert session.scalar(select(func.count(Post.id))) == 20
+        assert session.scalar(select(func.count(Post.id))) == 75
         assert session.scalar(select(func.count(Comment.id))) == sum(
             len(seed.comments) for seed in COMMUNITY_MOCK_POSTS
         )
@@ -60,7 +70,8 @@ def test_existing_post_prevents_all_mock_inserts(db_engine: Engine) -> None:
     with session_factory.begin() as session:
         session.add(
             Post(
-                tag="자유",
+                district="강남구",
+                prefix="자유",
                 title="기존 게시글",
                 content="사용자가 먼저 작성한 글",
                 password="1234",
@@ -83,7 +94,12 @@ def test_failed_seed_rolls_back_every_post_and_comment(db_engine: Engine) -> Non
     session_factory = sessionmaker(bind=db_engine, expire_on_commit=False)
     invalid_seeds = (
         COMMUNITY_MOCK_POSTS[0],
-        MockPostSeed(tag="잘못된태그", title="실패", content="전체 롤백 확인"),
+        MockPostSeed(
+            district="기타",
+            prefix="자유",
+            title="실패",
+            content="전체 롤백 확인",
+        ),
     )
 
     with pytest.raises(IntegrityError):
@@ -105,7 +121,7 @@ def test_startup_bootstraps_community_when_enabled(db_engine: Engine) -> None:
         pass
 
     with session_factory() as session:
-        assert session.scalar(select(func.count(Post.id))) == 20
+        assert session.scalar(select(func.count(Post.id))) == 75
 
 
 def test_startup_keeps_existing_community_data(db_engine: Engine) -> None:
@@ -114,7 +130,8 @@ def test_startup_keeps_existing_community_data(db_engine: Engine) -> None:
     with session_factory.begin() as session:
         session.add(
             Post(
-                tag="자유",
+                district="강남구",
+                prefix="자유",
                 title="운영 게시글",
                 content="재배포 뒤에도 유지되어야 하는 글",
                 password="1234",

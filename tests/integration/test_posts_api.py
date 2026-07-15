@@ -10,14 +10,21 @@ from app.models import Post
 def create_post(
     client: TestClient,
     *,
-    tag: str = "자유",
+    district: str = "강남구",
+    prefix: str = "자유",
     title: str = "제목",
     content: str = "본문",
     password: str = "1234",
 ):
     return client.post(
         "/api/posts",
-        json={"tag": tag, "title": title, "content": content, "password": password},
+        json={
+            "district": district,
+            "prefix": prefix,
+            "title": title,
+            "content": content,
+            "password": password,
+        },
     )
 
 
@@ -35,19 +42,28 @@ def test_create_and_get_post_never_expose_password(client: TestClient):
     assert "password" not in json.dumps(fetched.json())
 
 
-def test_list_combines_tag_search_and_pagination(client: TestClient):
-    create_post(client, tag="관광", title="한강 산책", content="야경")
-    create_post(client, tag="관광", title="서울숲", content="한강 근처")
-    create_post(client, tag="문화", title="한강 전시", content="미술")
+def test_list_combines_district_prefix_search_and_pagination(client: TestClient):
+    create_post(client, district="강남구", prefix="관광", title="한강 산책", content="야경")
+    create_post(client, district="강남구", prefix="관광", title="서울숲", content="한강 근처")
+    create_post(client, district="마포구", prefix="관광", title="한강 공원", content="산책")
+    create_post(client, district="강남구", prefix="문화", title="한강 전시", content="미술")
 
     response = client.get(
         "/api/posts",
-        params={"tag": "관광", "q": "한강", "page": 1, "size": 1},
+        params={
+            "district": "강남구",
+            "prefix": "관광",
+            "q": "한강",
+            "page": 1,
+            "size": 1,
+        },
     )
 
     assert response.status_code == 200
     payload = response.json()
     assert len(payload["items"]) == 1
+    assert payload["items"][0]["district"] == "강남구"
+    assert payload["items"][0]["prefix"] == "관광"
     assert payload["items"][0]["title"] == "서울숲"
     assert "content" not in payload["items"][0]
     assert payload["pagination"] == {
@@ -56,6 +72,34 @@ def test_list_combines_tag_search_and_pagination(client: TestClient):
         "total_items": 2,
         "total_pages": 2,
     }
+
+
+def test_list_without_district_returns_all_districts(client: TestClient):
+    create_post(client, district="강남구", title="강남 글")
+    create_post(client, district="마포구", title="마포 글")
+
+    response = client.get("/api/posts")
+
+    assert response.status_code == 200
+    assert {item["district"] for item in response.json()["items"]} == {"강남구", "마포구"}
+
+
+def test_create_rejects_old_tag_and_invalid_district(client: TestClient):
+    old_contract = client.post(
+        "/api/posts",
+        json={
+            "district": "강남구",
+            "prefix": "자유",
+            "tag": "자유",
+            "title": "제목",
+            "content": "본문",
+            "password": "1234",
+        },
+    )
+    invalid_district = create_post(client, district="기타")
+
+    assert old_contract.status_code == 400
+    assert invalid_district.status_code == 400
 
 
 def test_blank_search_is_treated_as_no_filter(client: TestClient):
@@ -75,7 +119,8 @@ def test_update_requires_matching_password(client: TestClient):
         f"/api/posts/{post_id}",
         json={
             "password": "9999",
-            "tag": "문화",
+            "district": "마포구",
+            "prefix": "문화",
             "title": "수정 제목",
             "content": "수정 본문",
         },
@@ -84,7 +129,8 @@ def test_update_requires_matching_password(client: TestClient):
         f"/api/posts/{post_id}",
         json={
             "password": "1234",
-            "tag": "문화",
+            "district": "마포구",
+            "prefix": "문화",
             "title": "수정 제목",
             "content": "수정 본문",
         },
@@ -93,7 +139,8 @@ def test_update_requires_matching_password(client: TestClient):
     assert rejected.status_code == 403
     assert rejected.json()["code"] == "PASSWORD_MISMATCH"
     assert updated.status_code == 200
-    assert updated.json()["tag"] == "문화"
+    assert updated.json()["district"] == "마포구"
+    assert updated.json()["prefix"] == "문화"
     assert updated.json()["title"] == "수정 제목"
 
 

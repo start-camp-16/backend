@@ -24,7 +24,8 @@ class LocationEvidence:
 class PostEvidence:
     post_id: int
     title: str
-    tag: str
+    district: str
+    prefix: str
     content: str
 
 
@@ -48,7 +49,6 @@ def _post_keyword_filter(keyword: str) -> ColumnElement[bool]:
     return or_(
         func.lower(Post.title).contains(lowered, autoescape=True),
         func.lower(Post.content).contains(lowered, autoescape=True),
-        func.lower(Post.tag).contains(lowered, autoescape=True),
     )
 
 
@@ -59,7 +59,7 @@ def retrieve_sources(
     location_limit: int,
     post_limit: int,
 ) -> RetrievedContext:
-    if not any((parsed.district, parsed.location_category, parsed.post_tag, parsed.keywords)):
+    if not any((parsed.district, parsed.location_category, parsed.post_prefix, parsed.keywords)):
         return RetrievedContext(locations=[], posts=[])
 
     location_filters = []
@@ -70,8 +70,10 @@ def retrieve_sources(
     location_filters.extend(_location_keyword_filter(keyword) for keyword in parsed.keywords)
 
     post_filters = []
-    if parsed.post_tag:
-        post_filters.append(Post.tag == parsed.post_tag)
+    if parsed.district:
+        post_filters.append(Post.district == parsed.district)
+    if parsed.post_prefix:
+        post_filters.append(Post.prefix == parsed.post_prefix)
     post_filters.extend(_post_keyword_filter(keyword) for keyword in parsed.keywords)
 
     location_rows = (
@@ -95,7 +97,7 @@ def retrieve_sources(
                 .limit(post_limit)
             )
         )
-        if parsed.post_tag or parsed.keywords
+        if parsed.district or parsed.post_prefix or parsed.keywords
         else []
     )
 
@@ -115,7 +117,13 @@ def retrieve_sources(
             )
         )
     posts = [
-        PostEvidence(post_id=row.id, title=row.title, tag=row.tag, content=row.content)
+        PostEvidence(
+            post_id=row.id,
+            title=row.title,
+            district=row.district,
+            prefix=row.prefix,
+            content=row.content,
+        )
         for row in post_rows
     ]
     return RetrievedContext(locations=locations, posts=posts)

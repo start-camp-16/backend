@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query, Response, status
 from sqlalchemy.orm import Session
 
+from app.community.classifications import PostDistrict, PostPrefix
 from app.community.comments import (
     create_comment,
     delete_comment,
@@ -19,7 +20,6 @@ from app.community.schemas import (
     PostCreate,
     PostDetail,
     PostListResponse,
-    PostTag,
     PostUpdate,
 )
 from app.db import get_db
@@ -32,12 +32,20 @@ CommentId = Annotated[int, Path(ge=1)]
 @router.get("/posts", response_model=PostListResponse, operation_id="getPosts")
 def posts(
     session: Annotated[Session, Depends(get_db)],
-    tag: PostTag | None = None,
+    district: PostDistrict | None = None,
+    prefix: PostPrefix | None = None,
     q: Annotated[str | None, Query(max_length=100)] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     size: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PostListResponse:
-    return list_posts(session, tag=tag, query=q, page=page, size=size)
+    return list_posts(
+        session,
+        district=district,
+        prefix=prefix,
+        query=q,
+        page=page,
+        size=size,
+    )
 
 
 @router.post(

@@ -45,7 +45,8 @@ class PostSource(BaseModel):
     type: Literal["post"] = "post"
     post_id: int
     title: str
-    tag: str
+    district: str
+    prefix: str
 
 
 class ChatResponse(BaseModel):
