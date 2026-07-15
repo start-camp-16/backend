@@ -13,6 +13,9 @@ LOCATION_CATEGORIES = (
     "숙박",
 )
 IGNORED_PHRASES = ("알려줘", "알려주세요", "보여줘", "보여주세요")
+SHARED_CLASSIFICATIONS = tuple(
+    category for category in LOCATION_CATEGORIES if category in POST_PREFIXES
+)
 
 
 @dataclass(frozen=True)
@@ -33,8 +36,15 @@ def _extract_first(text: str, candidates: tuple[str, ...]) -> tuple[str | None, 
 def parse_query(message: str) -> ParsedQuery:
     remainder = message
     district, remainder = _extract_first(remainder, POST_DISTRICTS)
-    location_category, remainder = _extract_first(remainder, LOCATION_CATEGORIES)
-    post_prefix, remainder = _extract_first(remainder, POST_PREFIXES)
+    shared_classification, remainder = _extract_first(remainder, SHARED_CLASSIFICATIONS)
+    location_category: str | None
+    post_prefix: str | None
+    if shared_classification:
+        location_category = shared_classification
+        post_prefix = shared_classification
+    else:
+        location_category, remainder = _extract_first(remainder, LOCATION_CATEGORIES)
+        post_prefix, remainder = _extract_first(remainder, POST_PREFIXES)
     for phrase in IGNORED_PHRASES:
         remainder = remainder.replace(phrase, " ")
     normalized = re.sub(r"[^0-9A-Za-z가-힣]+", " ", remainder)

@@ -1,3 +1,4 @@
+import pytest
 from sqlalchemy.orm import Session
 
 from app.chat.query import parse_query
@@ -143,3 +144,53 @@ def test_source_type_without_its_own_filter_is_not_broadly_queried(db_session: S
     assert location_only.posts == []
     assert post_only.locations == []
     assert post_only.posts
+
+
+@pytest.mark.parametrize("shared_classification", ["쇼핑", "숙박"])
+def test_shared_classification_filters_each_source_independently(
+    db_session: Session, shared_classification: str
+):
+    other_classification = "숙박" if shared_classification == "쇼핑" else "쇼핑"
+    db_session.add_all(
+        [
+            Location(
+                content_id=f"location-{shared_classification}",
+                category=shared_classification,
+                title=f"{shared_classification} 장소",
+                district="강남구",
+                source_order=1,
+            ),
+            Location(
+                content_id=f"location-{other_classification}",
+                category=other_classification,
+                title=f"{other_classification} 장소",
+                district="강남구",
+                source_order=2,
+            ),
+            Post(
+                district="강남구",
+                prefix=shared_classification,
+                title=f"{shared_classification} 게시글",
+                content="분류 일치",
+                password="1234",
+            ),
+            Post(
+                district="강남구",
+                prefix=other_classification,
+                title=f"{other_classification} 게시글",
+                content="분류 불일치",
+                password="1234",
+            ),
+        ]
+    )
+    db_session.commit()
+
+    context = retrieve_sources(
+        db_session,
+        parse_query(shared_classification),
+        location_limit=5,
+        post_limit=5,
+    )
+
+    assert [location.category for location in context.locations] == [shared_classification]
+    assert [post.prefix for post in context.posts] == [shared_classification]

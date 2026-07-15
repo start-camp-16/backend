@@ -1,3 +1,5 @@
+import pytest
+
 from app.chat.query import parse_query
 
 
@@ -24,4 +26,13 @@ def test_query_uses_longest_location_category_first():
 
     assert parsed.location_category == "문화시설"
     assert parsed.post_prefix is None
+    assert parsed.keywords == ()
+
+
+@pytest.mark.parametrize("shared_classification", ["쇼핑", "숙박"])
+def test_query_extracts_shared_location_category_and_post_prefix(shared_classification: str):
+    parsed = parse_query(shared_classification)
+
+    assert parsed.location_category == shared_classification
+    assert parsed.post_prefix == shared_classification
     assert parsed.keywords == ()
