@@ -14,6 +14,7 @@ from app.chat.router import router as chat_router
 from app.community.bootstrap import ensure_community_mock_data
 from app.community.router import router as community_router
 from app.config import Settings, get_settings
+from app.courses.router import router as courses_router
 from app.db import SessionLocal
 from app.errors import register_exception_handlers
 from app.health import router as health_router
@@ -73,6 +74,7 @@ def create_app(
         return response
 
     app.include_router(locations_router)
+    app.include_router(courses_router)
     app.include_router(community_router)
     app.include_router(chat_router)
     app.include_router(health_router)

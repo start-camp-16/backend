@@ -26,6 +26,14 @@
 - 수정과 삭제는 댓글 작성 시 설정한 비밀번호로 확인합니다.
 - 게시글 삭제 시 소속 댓글도 함께 삭제됩니다.
 
+### 맞춤 코스
+
+- 서울 구, 관심 카테고리 1~3개, 장소 수 3~5개로 코스 초안을 생성합니다.
+- 카테고리를 고르게 포함하고 장소 좌표의 직선거리가 짧아지도록 방문 순서를 정합니다.
+- 자동 추천 후 사용자가 편집한 장소 3~5개를 익명으로 저장할 수 있습니다.
+- 공유 링크로 누구나 조회하고, 설정한 비밀번호로만 수정·삭제할 수 있습니다.
+- 실제 도로 경로나 예상 이동시간이 아닌 구간별 직선거리를 제공합니다.
+
 ### 근거 기반 챗봇
 
 - 사용자 메시지에서 서울 구, 장소 카테고리, 게시글 태그, 검색어를 추출합니다.
@@ -48,6 +56,8 @@
 | 메타데이터 | `GET /api/meta/categories`, `GET /api/meta/districts` |
 | 장소 랭킹 | `GET /api/rankings` |
 | 전체 장소 | `GET /api/locations` |
+| 코스 추천 | `POST /api/course-suggestions` |
+| 코스 저장·공유 | `POST /api/courses`, `GET·PUT·DELETE /api/courses/{public_id}` |
 | 게시글 | `GET·POST /api/posts`, `GET·PUT·DELETE /api/posts/{post_id}` |
 | 댓글 | `GET·POST /api/posts/{post_id}/comments`, `PUT·DELETE /api/comments/{comment_id}` |
 | 챗봇 | `POST /api/chat` |

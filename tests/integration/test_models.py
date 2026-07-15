@@ -5,7 +5,7 @@ from sqlalchemy import func, inspect, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models import Comment, Location, Post
+from app.models import Comment, Course, CourseStop, Location, Post
 
 
 def make_location(content_id: str = "100") -> Location:
@@ -61,3 +61,31 @@ def test_post_timestamps_are_utc(db_session: Session):
 
     assert post.created_at.tzinfo is UTC
     assert post.updated_at.tzinfo is UTC
+
+
+def test_deleting_course_cascades_stops(db_session: Session):
+    location = make_location()
+    course = Course(public_id="a" * 32, title="서울 코스", password="1234")
+    course.stops.append(CourseStop(location=location, position=1))
+    db_session.add(course)
+    db_session.commit()
+
+    db_session.delete(course)
+    db_session.commit()
+
+    assert db_session.scalar(select(func.count(CourseStop.id))) == 0
+
+
+def test_course_rejects_duplicate_location(db_session: Session):
+    location = make_location()
+    course = Course(public_id="b" * 32, title="서울 코스", password="1234")
+    course.stops.extend(
+        [
+            CourseStop(location=location, position=1),
+            CourseStop(location=location, position=2),
+        ]
+    )
+    db_session.add(course)
+
+    with pytest.raises(IntegrityError):
+        db_session.commit()

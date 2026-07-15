@@ -12,6 +12,7 @@ tags:
   - name: Meta
   - name: Rankings
   - name: Locations
+  - name: Courses
   - name: Posts
   - name: Comments
   - name: Chat
@@ -84,6 +85,127 @@ paths:
                 $ref: '#/components/schemas/LocationListResponse'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/course-suggestions:
+    post:
+      tags: [Courses]
+      summary: 규칙 기반 코스 초안 생성
+      description: 장소 좌표의 직선거리와 카테고리 균형을 이용하며 결과를 저장하지 않습니다.
+      operationId: createCourseSuggestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseSuggestionRequest'
+      responses:
+        '200':
+          description: 추천 코스 초안
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseSuggestionResponse'
+        '400':
+          description: 입력 오류 또는 추천 장소 부족
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/courses:
+    post:
+      tags: [Courses]
+      summary: 익명 코스 저장
+      operationId: createCourse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseCreateRequest'
+      responses:
+        '201':
+          description: 저장된 코스
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDetail'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/LocationNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/courses/{public_id}:
+    parameters:
+      - $ref: '#/components/parameters/CoursePublicIdPath'
+    get:
+      tags: [Courses]
+      summary: 공유 코스 조회
+      operationId: getCourse
+      responses:
+        '200':
+          description: 저장된 코스
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDetail'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/CourseNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags: [Courses]
+      summary: 공유 코스 수정
+      operationId: updateCourse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseUpdateRequest'
+      responses:
+        '200':
+          description: 수정된 코스
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDetail'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/PasswordMismatch'
+        '404':
+          description: 코스 또는 장소 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Courses]
+      summary: 공유 코스 삭제
+      operationId: deleteCourse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordRequest'
+      responses:
+        '204':
+          description: 삭제 성공
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/PasswordMismatch'
+        '404':
+          $ref: '#/components/responses/CourseNotFound'
         '500':
           $ref: '#/components/responses/InternalError'
   /api/posts:
@@ -393,6 +515,15 @@ components:
       schema:
         type: integer
         minimum: 1
+    CoursePublicIdPath:
+      name: public_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^[0-9a-f]{32}$'
+        minLength: 32
+        maxLength: 32
   responses:
     ValidationError:
       description: 입력값 오류
@@ -433,6 +564,26 @@ components:
           example:
             code: COMMENT_NOT_FOUND
             message: 댓글을 찾을 수 없습니다.
+            details: null
+    CourseNotFound:
+      description: 코스 없음
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: COURSE_NOT_FOUND
+            message: 코스를 찾을 수 없습니다.
+            details: null
+    LocationNotFound:
+      description: 장소 없음
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: LOCATION_NOT_FOUND
+            message: 장소를 찾을 수 없습니다.
             details: null
     ChatRateLimited:
       description: 챗봇 호출 제한
@@ -566,6 +717,127 @@ components:
             $ref: '#/components/schemas/LocationItem'
         pagination:
           $ref: '#/components/schemas/Pagination'
+    CourseSuggestionRequest:
+      type: object
+      additionalProperties: false
+      required: [district, categories, stop_count]
+      properties:
+        district:
+          type: string
+          minLength: 1
+        categories:
+          type: array
+          minItems: 1
+          maxItems: 3
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/LocationCategory'
+        stop_count:
+          type: integer
+          minimum: 3
+          maximum: 5
+    CourseStop:
+      type: object
+      required: [position, distance_from_previous_meters, location]
+      properties:
+        position:
+          type: integer
+          minimum: 1
+          maximum: 5
+        distance_from_previous_meters:
+          type: [integer, 'null']
+          minimum: 0
+        location:
+          $ref: '#/components/schemas/LocationItem'
+    CourseSuggestionResponse:
+      type: object
+      required: [district, categories, stops, total_straight_line_distance_meters]
+      properties:
+        district:
+          type: string
+        categories:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/LocationCategory'
+        stops:
+          type: array
+          minItems: 3
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/CourseStop'
+        total_straight_line_distance_meters:
+          type: integer
+          minimum: 0
+    CourseCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [title, password, location_content_ids]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        password:
+          type: string
+          minLength: 4
+          maxLength: 20
+          writeOnly: true
+        location_content_ids:
+          type: array
+          minItems: 3
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+    CourseUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [title, password, location_content_ids]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        password:
+          type: string
+          minLength: 4
+          maxLength: 20
+          writeOnly: true
+        location_content_ids:
+          type: array
+          minItems: 3
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+    CourseDetail:
+      type: object
+      required: [public_id, title, created_at, updated_at, stops, total_straight_line_distance_meters]
+      properties:
+        public_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+          minLength: 32
+          maxLength: 32
+        title:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        stops:
+          type: array
+          minItems: 3
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/CourseStop'
+        total_straight_line_distance_meters:
+          type: [integer, 'null']
+          minimum: 0
     PostSummary:
       type: object
       required: [id, tag, title, created_at, updated_at]

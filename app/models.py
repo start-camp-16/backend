@@ -7,6 +7,7 @@ from sqlalchemy import (
     Index,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -138,3 +139,48 @@ class Comment(Base):
         nullable=False,
     )
     post: Mapped[Post] = relationship(back_populates="comments")
+
+
+class Course(Base):
+    __tablename__ = "courses"
+    __table_args__ = (
+        CheckConstraint("length(title) BETWEEN 1 AND 100", name="ck_courses_title_length"),
+        CheckConstraint("length(password) BETWEEN 4 AND 20", name="ck_courses_password_length"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    public_id: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(100), nullable=False)
+    password: Mapped[str] = mapped_column(String(20), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(),
+        default=utc_now,
+        onupdate=utc_now,
+        nullable=False,
+    )
+    stops: Mapped[list["CourseStop"]] = relationship(
+        back_populates="course",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="CourseStop.position",
+    )
+
+
+class CourseStop(Base):
+    __tablename__ = "course_stops"
+    __table_args__ = (
+        CheckConstraint("position BETWEEN 1 AND 5", name="ck_course_stops_position"),
+        UniqueConstraint("course_id", "position", name="uq_course_stops_course_position"),
+        UniqueConstraint("course_id", "location_id", name="uq_course_stops_course_location"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    course_id: Mapped[int] = mapped_column(
+        ForeignKey("courses.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    location_id: Mapped[int] = mapped_column(ForeignKey("locations.id"), nullable=False)
+    position: Mapped[int] = mapped_column(nullable=False)
+    course: Mapped[Course] = relationship(back_populates="stops")
+    location: Mapped[Location] = relationship()
