@@ -1,9 +1,9 @@
 from datetime import datetime
-from enum import StrEnum
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
+from app.community.classifications import PostDistrict, PostPrefix
 from app.schemas import Pagination
 
 TrimmedTitle = Annotated[
@@ -20,15 +20,8 @@ TrimmedCommentContent = Annotated[
 ]
 Password = Annotated[str, StringConstraints(min_length=4, max_length=20)]
 
-
-class PostTag(StrEnum):
-    TOURISM = "관광"
-    FOOD = "맛집"
-    CULTURE = "문화"
-    EVENT = "행사"
-    ACCOMMODATION = "숙박"
-    SHOPPING = "쇼핑"
-    FREE = "자유"
+# Temporary compatibility for API modules migrated in a later task.
+PostTag = PostPrefix
 
 
 class StrictRequest(BaseModel):
@@ -36,7 +29,8 @@ class StrictRequest(BaseModel):
 
 
 class PostCreate(StrictRequest):
-    tag: PostTag
+    district: PostDistrict
+    prefix: PostPrefix
     title: TrimmedTitle
     content: TrimmedPostContent
     password: Password
@@ -44,7 +38,8 @@ class PostCreate(StrictRequest):
 
 class PostUpdate(StrictRequest):
     password: Password
-    tag: PostTag
+    district: PostDistrict
+    prefix: PostPrefix
     title: TrimmedTitle
     content: TrimmedPostContent
 
@@ -67,7 +62,8 @@ class PostSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    tag: PostTag
+    district: PostDistrict
+    prefix: PostPrefix
     title: str
     created_at: datetime
     updated_at: datetime
