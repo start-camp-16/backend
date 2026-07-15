@@ -35,8 +35,20 @@ def seed_chat_data(db_session: Session) -> None:
                 district="강남구",
                 source_order=1,
             ),
-            Post(tag="문화", title="강남 전시 후기", content="좋았어요", password="1234"),
-            Post(tag="자유", title="강남 전시 모임", content="같이 가요", password="1234"),
+            Post(
+                district="강남구",
+                prefix="문화",
+                title="강남 전시 후기",
+                content="좋았어요",
+                password="1234",
+            ),
+            Post(
+                district="마포구",
+                prefix="자유",
+                title="마포 전시 모임",
+                content="같이 가요",
+                password="1234",
+            ),
         ]
     )
     db_session.commit()
@@ -53,7 +65,7 @@ def test_retrieval_combines_filters_keywords_and_limits(db_session: Session):
     )
 
     assert [location.content_id for location in context.locations] == ["2"]
-    assert [post.title for post in context.posts] == ["강남 전시 모임", "강남 전시 후기"]
+    assert [post.title for post in context.posts] == ["강남 전시 후기"]
 
 
 def test_zero_coordinates_are_removed_from_evidence(db_session: Session):
@@ -71,7 +83,7 @@ def test_zero_coordinates_are_removed_from_evidence(db_session: Session):
     assert context.locations[0].latitude is None
 
 
-def test_post_tag_filters_community_results(db_session: Session):
+def test_post_prefix_filters_community_results(db_session: Session):
     seed_chat_data(db_session)
 
     context = retrieve_sources(
@@ -81,7 +93,20 @@ def test_post_tag_filters_community_results(db_session: Session):
         post_limit=5,
     )
 
-    assert [post.tag for post in context.posts] == ["자유"]
+    assert [post.prefix for post in context.posts] == ["자유"]
+
+
+def test_district_filters_community_results(db_session: Session):
+    seed_chat_data(db_session)
+
+    context = retrieve_sources(
+        db_session,
+        parse_query("강남구 전시"),
+        location_limit=5,
+        post_limit=5,
+    )
+
+    assert [post.district for post in context.posts] == ["강남구"]
 
 
 def test_unrecognized_filter_with_no_matches_returns_empty(db_session: Session):

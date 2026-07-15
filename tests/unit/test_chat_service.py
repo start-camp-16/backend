@@ -14,7 +14,7 @@ from app.chat.provider import (
 from app.chat.schemas import ChatRequest
 from app.chat.service import answer_chat
 from app.errors import AppError
-from app.models import Location
+from app.models import Location, Post
 
 
 @dataclass
@@ -31,14 +31,24 @@ class FakeProvider(ChatProvider):
 
 
 def test_service_sends_only_retrieved_evidence_and_returns_public_sources(db_session: Session):
-    db_session.add(
-        Location(
-            content_id="1",
-            category="문화시설",
-            title="전시 문화관",
-            district="강남구",
-            source_order=1,
-        )
+    post = Post(
+        district="강남구",
+        prefix="문화",
+        title="강남 전시 후기",
+        content="좋았어요",
+        password="1234",
+    )
+    db_session.add_all(
+        [
+            Location(
+                content_id="1",
+                category="문화시설",
+                title="전시 문화관",
+                district="강남구",
+                source_order=1,
+            ),
+            post,
+        ]
     )
     db_session.commit()
     provider = FakeProvider()
@@ -54,6 +64,13 @@ def test_service_sends_only_retrieved_evidence_and_returns_public_sources(db_ses
     assert response.answer == "근거 기반 답변"
     assert response.sources[0].type == "location"
     assert response.sources[0].title == "전시 문화관"
+    assert response.sources[1].model_dump() == {
+        "type": "post",
+        "post_id": post.id,
+        "title": "강남 전시 후기",
+        "district": "강남구",
+        "prefix": "문화",
+    }
     instructions, messages = provider.calls[0]
     assert "제공된 근거" in instructions
     assert "전시 문화관" in messages[-1]["content"]
