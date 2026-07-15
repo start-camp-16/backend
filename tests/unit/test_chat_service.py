@@ -30,7 +30,7 @@ class FakeProvider(ChatProvider):
         return self.result
 
 
-def test_service_sends_only_retrieved_evidence_and_returns_public_sources(db_session: Session):
+def test_service_sends_retrieved_evidence_and_returns_public_sources(db_session: Session):
     post = Post(
         district="강남구",
         prefix="문화",
@@ -74,6 +74,26 @@ def test_service_sends_only_retrieved_evidence_and_returns_public_sources(db_ses
     instructions, messages = provider.calls[0]
     assert "제공된 근거" in instructions
     assert "전시 문화관" in messages[-1]["content"]
+
+
+def test_service_allows_general_knowledge_when_retrieved_evidence_is_insufficient(
+    db_session: Session,
+):
+    provider = FakeProvider()
+
+    answer_chat(
+        db_session,
+        ChatRequest(message="마포구에 외국인이 갈만한 관광명소 추천해줘"),
+        provider=provider,
+        location_limit=5,
+        post_limit=5,
+    )
+
+    instructions, _ = provider.calls[0]
+    assert "일반 지식" in instructions
+    assert "근거가 부족하다는 이유만으로 답변을 거절하지 마세요" in instructions
+    assert "영업시간, 가격, 휴무일" in instructions
+    assert "방문 전에 확인" in instructions
 
 
 @pytest.mark.parametrize(
