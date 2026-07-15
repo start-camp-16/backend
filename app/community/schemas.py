@@ -20,10 +20,6 @@ TrimmedCommentContent = Annotated[
 ]
 Password = Annotated[str, StringConstraints(min_length=4, max_length=20)]
 
-# Temporary compatibility for API modules migrated in a later task.
-PostTag = PostPrefix
-
-
 class StrictRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

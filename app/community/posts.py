@@ -1,12 +1,12 @@
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.community.classifications import PostDistrict, PostPrefix
 from app.community.schemas import (
     PostCreate,
     PostDetail,
     PostListResponse,
     PostSummary,
-    PostTag,
     PostUpdate,
 )
 from app.errors import AppError
@@ -39,7 +39,8 @@ def require_post(session: Session, post_id: int) -> Post:
 
 def create_post(session: Session, payload: PostCreate) -> PostDetail:
     post = Post(
-        tag=payload.tag.value,
+        district=payload.district.value,
+        prefix=payload.prefix.value,
         title=payload.title,
         content=payload.content,
         password=payload.password,
@@ -57,14 +58,17 @@ def get_post(session: Session, post_id: int) -> PostDetail:
 def list_posts(
     session: Session,
     *,
-    tag: PostTag | None,
+    district: PostDistrict | None,
+    prefix: PostPrefix | None,
     query: str | None,
     page: int,
     size: int,
 ) -> PostListResponse:
     filters = []
-    if tag is not None:
-        filters.append(Post.tag == tag.value)
+    if district is not None:
+        filters.append(Post.district == district.value)
+    if prefix is not None:
+        filters.append(Post.prefix == prefix.value)
     normalized_query = query.strip() if query else ""
     if normalized_query:
         lowered_query = normalized_query.lower()
@@ -101,7 +105,8 @@ def update_post(session: Session, post_id: int, payload: PostUpdate) -> PostDeta
     post = require_post(session, post_id)
     if post.password != payload.password:
         raise password_mismatch()
-    post.tag = payload.tag.value
+    post.district = payload.district.value
+    post.prefix = payload.prefix.value
     post.title = payload.title
     post.content = payload.content
     session.commit()

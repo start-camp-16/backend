@@ -10,7 +10,13 @@ from app.models import Comment
 def create_post(client: TestClient, password: str = "1234") -> int:
     response = client.post(
         "/api/posts",
-        json={"tag": "자유", "title": "제목", "content": "본문", "password": password},
+        json={
+            "district": "강남구",
+            "prefix": "자유",
+            "title": "제목",
+            "content": "본문",
+            "password": password,
+        },
     )
     return response.json()["id"]
 
