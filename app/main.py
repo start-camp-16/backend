@@ -80,7 +80,7 @@ def create_app(
     app.include_router(community_router)
     app.include_router(chat_router)
     app.include_router(health_router)
-    app.mount("/admin", create_admin_app(resolved_settings))
+    app.mount("/admin", create_admin_app(resolved_settings, session_factory))
     install_canonical_openapi(app)
     return app
 
