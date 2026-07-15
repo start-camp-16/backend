@@ -38,22 +38,6 @@ def _add_community_mock_posts(session: Session, seeds: Sequence[MockPostSeed]) -
         session.add(post)
 
 
-def ensure_community_mock_data(
-    session_factory: sessionmaker[Session],
-    seeds: Sequence[MockPostSeed] = COMMUNITY_MOCK_POSTS,
-) -> int | None:
-    with session_factory.begin() as session:
-        if session.scalar(select(Post.id).limit(1)) is not None:
-            logger.info("Community mock bootstrap skipped because a post already exists")
-            return None
-
-        _add_community_mock_posts(session, seeds)
-
-    inserted = len(seeds)
-    logger.info("Community mock bootstrap completed", extra={"inserted": inserted})
-    return inserted
-
-
 def reset_community_mock_data(
     session_factory: sessionmaker[Session],
     seeds: Sequence[MockPostSeed] = COMMUNITY_MOCK_POSTS,

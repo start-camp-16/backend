@@ -1,3 +1,4 @@
+import logging
 from collections import Counter
 from datetime import UTC, datetime, timedelta
 
@@ -16,7 +17,7 @@ from app.community.bootstrap import (
 )
 from app.community.classifications import POST_DISTRICTS, POST_PREFIXES
 from app.main import create_app
-from app.models import Comment, Post
+from app.models import Comment, Location, Post
 
 
 def test_empty_database_gets_five_posts_per_district_and_bounded_comments(
@@ -153,20 +154,48 @@ def test_startup_bootstraps_community_when_enabled(db_engine: Engine) -> None:
         assert session.scalar(select(func.count(Post.id))) == 125
 
 
-def test_startup_keeps_existing_community_data(db_engine: Engine) -> None:
+def test_reset_logs_counts_and_duration(
+    db_engine: Engine,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    session_factory = sessionmaker(bind=db_engine, expire_on_commit=False)
+
+    with caplog.at_level(logging.INFO, logger="app.community.bootstrap"):
+        reset_community_mock_data(session_factory)
+
+    record = next(
+        record for record in caplog.records if record.message == "Community mock reset completed"
+    )
+    assert record.inserted_posts == 125
+    assert record.inserted_comments == sum(len(seed.comments) for seed in COMMUNITY_MOCK_POSTS)
+    assert 0 <= record.elapsed_ms < 1000
+
+
+def test_startup_replaces_existing_community_data_and_keeps_locations(
+    db_engine: Engine,
+) -> None:
     session_factory = sessionmaker(bind=db_engine, expire_on_commit=False)
     existing_time = datetime(2024, 12, 31, tzinfo=UTC)
     with session_factory.begin() as session:
-        session.add(
-            Post(
-                district="강남구",
-                prefix="자유",
-                title="운영 게시글",
-                content="재배포 뒤에도 유지되어야 하는 글",
-                password="1234",
-                created_at=existing_time,
-                updated_at=existing_time,
-            )
+        session.add_all(
+            [
+                Post(
+                    district="강남구",
+                    prefix="자유",
+                    title="운영 게시글",
+                    content="재배포 뒤에는 초기 데이터로 교체될 글",
+                    password="1234",
+                    created_at=existing_time,
+                    updated_at=existing_time,
+                ),
+                Location(
+                    content_id="startup-location",
+                    category="관광지",
+                    title="유지할 장소",
+                    district="강남구",
+                    source_order=1,
+                ),
+            ]
         )
     app = create_app(
         bootstrap_community=True,
@@ -177,5 +206,12 @@ def test_startup_keeps_existing_community_data(db_engine: Engine) -> None:
         pass
 
     with session_factory() as session:
-        assert session.scalar(select(func.count(Post.id))) == 1
-        assert session.scalar(select(Post.title)) == "운영 게시글"
+        assert session.scalar(select(func.count(Post.id))) == 125
+        assert session.scalar(
+            select(func.count()).select_from(Post).where(Post.title == "운영 게시글")
+        ) == 0
+        assert session.scalar(
+            select(func.count()).select_from(Location).where(
+                Location.content_id == "startup-location"
+            )
+        ) == 1
