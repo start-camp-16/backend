@@ -1,5 +1,5 @@
 from collections import Counter
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import func, select
@@ -10,6 +10,7 @@ from starlette.testclient import TestClient
 
 from app.community.bootstrap import (
     COMMUNITY_MOCK_POSTS,
+    MOCK_DATA_STARTED_AT,
     MockPostSeed,
     ensure_community_mock_data,
 )
@@ -40,8 +41,12 @@ def test_empty_database_gets_three_posts_per_district_and_fixed_comments(
     assert set(post.prefix for post in posts) == set(POST_PREFIXES)
     assert set(Counter(post.prefix for post in posts).values()) == {10, 11}
     assert sum(len(post.comments) for post in posts) == 25
+    assert [len(post.comments) for post in posts] == [1, 0, 0] * len(POST_DISTRICTS)
     assert all(post.password == "mock1234" for post in posts)
     assert all(comment.password == "mock1234" for post in posts for comment in post.comments)
+    assert [post.created_at for post in posts] == [
+        MOCK_DATA_STARTED_AT + timedelta(days=post_index) for post_index in range(75)
+    ]
     assert all(comment.created_at > post.created_at for post in posts for comment in post.comments)
 
 

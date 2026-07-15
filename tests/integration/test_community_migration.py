@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,7 @@ def alembic_config(database_path: Path) -> Config:
     return config
 
 
-def test_upgrade_resets_community_and_adds_new_constraints(tmp_path: Path):
+def test_upgrade_resets_community_and_replaces_tag_with_district_prefix(tmp_path: Path):
     database_path = tmp_path / "migration.db"
     config = alembic_config(database_path)
     command.upgrade(config, "0002_add_courses")
@@ -42,10 +43,13 @@ def test_upgrade_resets_community_and_adds_new_constraints(tmp_path: Path):
         "prefix",
     }
     assert "tag" not in {column["name"] for column in inspector.get_columns("posts")}
-    assert {index["name"] for index in inspector.get_indexes("posts")} >= {
+    indexes = {index["name"]: index for index in inspector.get_indexes("posts")}
+    assert indexes.keys() >= {
         "ix_posts_district",
         "ix_posts_prefix",
     }
+    assert indexes["ix_posts_district"]["column_names"] == ["district"]
+    assert indexes["ix_posts_prefix"]["column_names"] == ["prefix"]
     with engine.begin() as connection:
         assert connection.scalar(sa.text("SELECT count(*) FROM posts")) == 0
         assert connection.scalar(sa.text("SELECT count(*) FROM comments")) == 0
@@ -59,3 +63,15 @@ def test_upgrade_resets_community_and_adds_new_constraints(tmp_path: Path):
                 )
             )
     engine.dispose()
+
+
+def test_alembic_upgrade_keeps_existing_application_loggers_enabled(tmp_path: Path) -> None:
+    app_logger = logging.getLogger("app.main")
+    app_logger.disabled = False
+
+    try:
+        command.upgrade(alembic_config(tmp_path / "logging.db"), "head")
+
+        assert app_logger.disabled is False
+    finally:
+        app_logger.disabled = False

@@ -56,7 +56,7 @@ def test_runtime_openapi_is_the_canonical_contract():
     assert response.json() == load_contract()
 
 
-def test_post_contract_uses_district_and_prefix():
+def test_post_contract_uses_district_and_prefix_and_removes_tag():
     document = load_contract()
     schemas = document["components"]["schemas"]
     list_parameters = document["paths"]["/api/posts"]["get"]["parameters"]

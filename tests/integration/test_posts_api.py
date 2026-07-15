@@ -64,6 +64,8 @@ def test_list_combines_district_prefix_search_and_pagination(client: TestClient)
     assert len(payload["items"]) == 1
     assert payload["items"][0]["district"] == "강남구"
     assert payload["items"][0]["prefix"] == "관광"
+    assert payload["items"][0]["title"] == "서울숲"
+    assert "content" not in payload["items"][0]
     assert payload["pagination"] == {
         "page": 1,
         "size": 1,
