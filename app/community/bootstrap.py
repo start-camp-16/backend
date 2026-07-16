@@ -12,6 +12,7 @@ from app.models import Comment, Post
 logger = logging.getLogger(__name__)
 
 MOCK_DATA_STARTED_AT = datetime(2025, 1, 1, 3, tzinfo=UTC)
+MOCK_DISTRICT = "강남구"
 
 
 def _add_community_mock_posts(session: Session, seeds: Sequence[MockPostSeed]) -> None:
@@ -45,11 +46,17 @@ def reset_community_mock_data(
     started_at = perf_counter()
     expected_comments = sum(len(seed.comments) for seed in seeds)
     with session_factory.begin() as session:
-        session.execute(delete(Post))
+        session.execute(delete(Post).where(Post.district == MOCK_DISTRICT))
         _add_community_mock_posts(session, seeds)
         session.flush()
-        inserted_posts = session.scalar(select(func.count(Post.id))) or 0
-        inserted_comments = session.scalar(select(func.count(Comment.id))) or 0
+        inserted_posts = session.scalar(
+            select(func.count(Post.id)).where(Post.district == MOCK_DISTRICT)
+        ) or 0
+        inserted_comments = session.scalar(
+            select(func.count(Comment.id))
+            .join(Post, Comment.post_id == Post.id)
+            .where(Post.district == MOCK_DISTRICT)
+        ) or 0
         if inserted_posts != len(seeds) or inserted_comments != expected_comments:
             raise RuntimeError("Community mock reset produced unexpected row counts")
 

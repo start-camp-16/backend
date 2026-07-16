@@ -1,13 +1,8 @@
-import random
 from dataclasses import dataclass
-from typing import Literal
 
-from app.community.classifications import POST_DISTRICTS, POST_PREFIXES
+from app.community.classifications import POST_PREFIXES
 
 MOCK_PASSWORD = "mock1234"
-MOCK_RANDOM_SEED = 20250715
-
-PostKind = Literal["shared", "specific"]
 
 
 @dataclass(frozen=True)
@@ -22,109 +17,153 @@ class MockPostSeed:
     title: str
     content: str
     comments: tuple[MockCommentSeed, ...] = ()
-    kind: PostKind = "specific"
 
 
-SHARED_POST_TEMPLATES = (
-    (
-        "{district}에서 가볍게 걷기 좋은 곳을 공유해요",
-        "{district}에서 대중교통으로 가기 편하고 천천히 걷기 좋은 장소를 찾고 있어요. "
-        "붐비는 시간대와 쉬어 갈 수 있는 지점을 함께 알려 주시면 좋겠습니다.",
+GANGNAM_THEME_SUBJECTS: dict[str, tuple[str, ...]] = {
+    "관광": ("코엑스 아쿠아리움", "봉은사", "도산공원", "선정릉", "양재천 산책로"),
+    "맛집": ("코엑스 점심", "압구정 브런치", "신사동 카페", "선릉 혼밥", "청담 저녁"),
+    "문화": (
+        "별마당도서관",
+        "코엑스 오디토리움",
+        "K현대미술관",
+        "플랫폼엘",
+        "마이아트뮤지엄",
     ),
-    (
-        "{district}에서 혼자 식사하기 좋은 곳이 궁금해요",
-        "{district}에서 혼자 방문해도 부담 없고 식사 시간이 오래 걸리지 않는 곳을 "
-        "찾고 있습니다. 대표 메뉴와 비교적 여유로운 방문 시간도 공유해 주세요.",
+    "행사": (
+        "코엑스 전시",
+        "무역센터 미디어",
+        "강남페스티벌",
+        "도산공원 플리마켓",
+        "양재천 축제",
     ),
-    (
-        "{district} 주말 나들이 정보를 모아봐요",
-        "이번 주말에 {district} 안에서 즐길 수 있는 전시, 행사, 시장 정보를 찾고 있어요. "
-        "예약 여부와 대중교통 이용 팁이 있다면 함께 남겨 주세요.",
+    "숙박": (
+        "그랜드 인터컨티넨탈",
+        "파크 하얏트",
+        "L7 강남",
+        "신라스테이 삼성",
+        "호텔 안테룸",
     ),
-)
-
-DISTRICT_FEATURE_NAMES: dict[str, tuple[str, str]] = {
-    "강남구": ("코엑스", "서울 선릉과 정릉 [유네스코 세계유산]"),
-    "강동구": ("서울 암사동 유적", "길동생태공원"),
-    "강북구": ("북한산국립공원(서울)", "근현대사기념관"),
-    "강서구": ("서울식물원", "겸재정선미술관"),
-    "관악구": ("관악산", "관악산 낙성대공원"),
-    "광진구": ("서울어린이대공원", "뚝섬한강공원"),
-    "구로구": ("푸른수목원", "고척 스카이돔"),
-    "금천구": ("호암산성", "금천예술공장"),
-    "노원구": ("화랑대 철도공원", "서울시립과학관"),
-    "도봉구": ("도봉산", "둘리뮤지엄"),
-    "동대문구": ("홍릉시험림(홍릉숲)", "서울약령시한의약박물관"),
-    "동작구": ("국립서울현충원", "노량진수산물도매시장"),
-    "마포구": ("하늘공원", "경의선숲길"),
-    "서대문구": ("서대문형무소역사관", "서대문 안산(안산자락길)"),
-    "서초구": ("반포한강공원", "예술의전당"),
-    "성동구": ("서울숲", "성수동 카페거리"),
-    "성북구": ("길상사(서울)", "성북동고택북촌산책길"),
-    "송파구": ("석촌호수", "롯데월드 어드벤처"),
-    "양천구": ("서서울호수공원", "목동종합운동장"),
-    "영등포구": ("여의도한강공원", "문래창작촌"),
-    "용산구": ("국립중앙박물관", "용산가족공원"),
-    "은평구": ("진관사", "은평한옥마을"),
-    "종로구": ("경복궁", "북촌한옥마을"),
-    "중구": ("남산서울타워", "덕수궁"),
-    "중랑구": ("용마산", "중랑장미공원"),
+    "쇼핑": (
+        "스타필드 코엑스몰",
+        "파르나스몰",
+        "현대백화점 무역센터점",
+        "가로수길",
+        "압구정 로데오",
+    ),
+    "자유": (
+        "코엑스 하루 동선",
+        "강남 비 오는 날",
+        "삼성역 약속",
+        "강남 사진 명소",
+        "주말 강남 나들이",
+    ),
 }
 
-COMMENT_TEMPLATES = (
-    "{district} 정보 찾고 있었는데 공유해 주셔서 감사합니다.",
-    "방문 전에 운영 시간과 휴무일도 확인해 보면 좋을 것 같아요.",
-    "대중교통으로 다녀온 후기도 궁금합니다.",
-    "주말에는 사람이 많을 수 있으니 오전 방문도 괜찮겠네요.",
-    "저도 다음 나들이 때 참고해 볼게요.",
-    "근처에서 함께 들를 만한 곳도 있으면 추천해 주세요.",
-    "사진 찍기 좋은 시간대가 언제인지 궁금해요.",
-    "아이와 함께 가도 괜찮은지 아시는 분 계실까요?",
-)
+PREFIX_COPY: dict[str, tuple[str, str]] = {
+    "관광": (
+        "{subject} 방문 팁 부탁드려요",
+        "강남구 {subject}에 방문하려고 합니다. "
+        "붐비지 않는 시간과 주변 동선을 알려 주세요.",
+    ),
+    "맛집": (
+        "{subject} 추천을 모아봐요",
+        "강남구에서 {subject} 장소를 찾고 있어요. "
+        "대표 메뉴와 대기 적은 시간을 추천해 주세요.",
+    ),
+    "문화": (
+        "{subject} 관람 후기 궁금해요",
+        "강남구 {subject}을 여유롭게 즐기는 방법과 "
+        "관람 전 확인할 점을 공유해 주세요.",
+    ),
+    "행사": (
+        "{subject} 다녀오신 분 계신가요?",
+        "강남구 {subject} 일정과 예약 여부, "
+        "현장에서 유용했던 팁을 알고 싶어요.",
+    ),
+    "숙박": (
+        "{subject} 숙박 후기 부탁드려요",
+        "강남구 {subject}의 객실과 교통 편의성, "
+        "주변에서 함께 들를 곳이 궁금합니다.",
+    ),
+    "쇼핑": (
+        "{subject} 쇼핑 동선 추천해 주세요",
+        "강남구 {subject}에서 효율적으로 둘러볼 매장과 "
+        "덜 붐비는 시간을 알려 주세요.",
+    ),
+    "자유": (
+        "{subject} 아이디어를 나눠요",
+        "강남구에서 {subject}을 계획 중입니다. "
+        "실제로 다녀온 동선과 팁을 자유롭게 공유해 주세요.",
+    ),
+}
+
+PREFIX_COMMENT_COPY: dict[str, tuple[str, ...]] = {
+    "관광": (
+        "오전 시간대가 비교적 여유로워서 천천히 둘러보기 좋았어요.",
+        "지하철역에서 가까워 대중교통으로 방문하기 편했습니다.",
+        "야외 장소라면 날씨와 휴관 안내를 미리 확인해 보세요.",
+        "근처 명소까지 묶으면 알찬 반나절 관광 코스가 됩니다.",
+    ),
+    "맛집": (
+        "평일 점심은 11시 30분 전에 가면 대기가 비교적 짧았어요.",
+        "대표 메뉴와 계절 메뉴를 하나씩 주문해 나눠 먹기 좋았습니다.",
+        "주말에는 예약 가능한지 먼저 확인하는 것을 추천해요.",
+        "식사 후 근처 카페까지 걸어서 이동하기 좋은 동선입니다.",
+    ),
+    "문화": (
+        "관람 시작 시간을 확인하고 여유 있게 도착하는 게 좋았어요.",
+        "전시 해설이나 프로그램을 함께 신청하면 더 알차게 볼 수 있어요.",
+        "사진 촬영 가능 구역은 현장 안내를 먼저 확인해 주세요.",
+        "관람 뒤 별마당도서관까지 이어서 둘러보기 좋았습니다.",
+    ),
+    "행사": (
+        "사전 예약 회차가 빨리 마감돼서 미리 신청하는 편이 좋아요.",
+        "현장 등록 줄이 길 수 있으니 시작보다 일찍 도착해 보세요.",
+        "행사장 배치도와 입장 게이트를 미리 확인하면 편합니다.",
+        "종료 시간에는 주변 교통이 붐벼 지하철 이용을 추천해요.",
+    ),
+    "숙박": (
+        "삼성역과 가까워 코엑스 일정이 있을 때 이동하기 편했어요.",
+        "체크인 시간과 짐 보관 가능 여부를 미리 확인해 보세요.",
+        "고층 객실을 원한다면 예약할 때 요청사항에 남기는 게 좋아요.",
+        "조식 후 코엑스몰로 바로 이동하는 동선이 편리했습니다.",
+    ),
+    "쇼핑": (
+        "매장 오픈 직후에 가면 인기 매장도 비교적 여유로웠어요.",
+        "층별 안내를 먼저 보고 동선을 정하면 시간을 아낄 수 있습니다.",
+        "주말에는 주차가 붐벼 지하철로 방문하는 편이 편해요.",
+        "쇼핑 후 파르나스몰 식당가까지 이어서 들르기 좋았습니다.",
+    ),
+    "자유": (
+        "비 오는 날에도 실내 이동이 많은 코엑스 쪽이 편했어요.",
+        "약속 장소는 출구 번호까지 정해 두면 만나기 수월합니다.",
+        "사진을 찍으려면 사람이 적은 오전 시간을 추천해요.",
+        "하루에 너무 많이 잡기보다 세 곳 정도가 여유로웠습니다.",
+    ),
+}
 
 
 def build_community_mock_posts() -> tuple[MockPostSeed, ...]:
-    if set(DISTRICT_FEATURE_NAMES) != set(POST_DISTRICTS):
-        raise ValueError("District feature data must cover every supported district")
+    if set(GANGNAM_THEME_SUBJECTS) != set(POST_PREFIXES) or set(PREFIX_COMMENT_COPY) != set(
+        POST_PREFIXES
+    ):
+        raise ValueError("Gangnam theme data must cover every supported prefix")
 
-    randomizer = random.Random(MOCK_RANDOM_SEED)
     seeds: list[MockPostSeed] = []
-    for district_index, district in enumerate(POST_DISTRICTS):
-        post_data: list[tuple[PostKind, str, str]] = [
-            (
-                "shared",
-                title.format(district=district),
-                content.format(district=district),
-            )
-            for title, content in SHARED_POST_TEMPLATES
-        ]
-        post_data.extend(
-            (
-                "specific",
-                f"{feature_name} 다녀오신 분 계신가요?",
-                f"{district}의 {feature_name}에 방문해 보려고 합니다. "
-                "추천 동선과 여유롭게 둘러보기 좋은 시간대, 주변에서 함께 들를 만한 "
-                "장소가 있다면 알려 주세요.",
-            )
-            for feature_name in DISTRICT_FEATURE_NAMES[district]
-        )
-
-        for post_index, (kind, title, content) in enumerate(post_data):
-            prefix_index = (district_index * len(post_data) + post_index) % len(POST_PREFIXES)
-            prefix = POST_PREFIXES[prefix_index]
-            comment_count = randomizer.randint(0, 3)
-            comment_texts = randomizer.sample(COMMENT_TEMPLATES, k=comment_count)
-            comments = tuple(
-                MockCommentSeed(content=text.format(district=district)) for text in comment_texts
-            )
+    for prefix in POST_PREFIXES:
+        title_template, content_template = PREFIX_COPY[prefix]
+        for subject_index, subject in enumerate(GANGNAM_THEME_SUBJECTS[prefix]):
+            comment_count = 3 + (subject_index % 2)
             seeds.append(
                 MockPostSeed(
-                    district=district,
+                    district="강남구",
                     prefix=prefix,
-                    title=title,
-                    content=content,
-                    comments=comments,
-                    kind=kind,
+                    title=title_template.format(subject=subject),
+                    content=content_template.format(subject=subject),
+                    comments=tuple(
+                        MockCommentSeed(content=content)
+                        for content in PREFIX_COMMENT_COPY[prefix][:comment_count]
+                    ),
                 )
             )
     return tuple(seeds)
