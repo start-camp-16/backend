@@ -1,50 +1,41 @@
 from collections import Counter
 
-from app.community.classifications import POST_DISTRICTS, POST_PREFIXES
+from app.community.classifications import POST_PREFIXES
 from app.community.mock_data import build_community_mock_posts
 
 
-def test_builds_five_posts_per_district() -> None:
+def test_builds_five_gangnam_posts_for_every_prefix() -> None:
     posts = build_community_mock_posts()
 
-    assert len(posts) == 125
-    assert Counter(post.district for post in posts) == Counter(
-        {district: 5 for district in POST_DISTRICTS}
+    assert len(posts) == 35
+    assert {post.district for post in posts} == {"강남구"}
+    assert Counter(post.prefix for post in posts) == Counter(
+        {prefix: 5 for prefix in POST_PREFIXES}
     )
 
 
-def test_each_district_has_three_shared_and_two_specific_posts() -> None:
+def test_every_post_has_three_or_four_contextual_comments() -> None:
     posts = build_community_mock_posts()
 
-    for district in POST_DISTRICTS:
-        district_posts = [post for post in posts if post.district == district]
-        assert Counter(post.kind for post in district_posts) == {
-            "shared": 3,
-            "specific": 2,
-        }
+    assert {len(post.comments) for post in posts} == {3, 4}
+    assert all(comment.content.strip() for post in posts for comment in post.comments)
 
 
-def test_build_distributes_prefixes_and_bounded_comments() -> None:
+def test_each_prefix_uses_distinct_comment_copy() -> None:
+    posts = build_community_mock_posts()
+    first_comment_set_by_prefix = {
+        prefix: tuple(
+            comment.content
+            for comment in next(post for post in posts if post.prefix == prefix).comments
+        )
+        for prefix in POST_PREFIXES
+    }
+
+    assert len(set(first_comment_set_by_prefix.values())) == len(POST_PREFIXES)
+
+
+def test_build_is_deterministic_and_titles_are_unique() -> None:
     posts = build_community_mock_posts()
 
-    assert set(post.prefix for post in posts) == set(POST_PREFIXES)
-    assert set(Counter(post.prefix for post in posts).values()) == {17, 18}
-    comment_counts = [len(post.comments) for post in posts]
-    assert set(comment_counts) <= {0, 1, 2, 3}
-    assert 0 in comment_counts
-    assert 3 in comment_counts
-
-
-def test_build_is_deterministic() -> None:
-    assert build_community_mock_posts() == build_community_mock_posts()
-
-
-def test_specific_posts_mention_two_distinct_district_features() -> None:
-    posts = build_community_mock_posts()
-
-    for district in POST_DISTRICTS:
-        specific_posts = [
-            post for post in posts if post.district == district and post.kind == "specific"
-        ]
-        assert len({post.title for post in specific_posts}) == 2
-        assert all(district in post.content for post in specific_posts)
+    assert posts == build_community_mock_posts()
+    assert len({post.title for post in posts}) == 35

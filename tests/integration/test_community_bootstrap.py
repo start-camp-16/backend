@@ -15,12 +15,12 @@ from app.community.bootstrap import (
     MockPostSeed,
     reset_community_mock_data,
 )
-from app.community.classifications import POST_DISTRICTS, POST_PREFIXES
+from app.community.classifications import POST_PREFIXES
 from app.main import create_app
 from app.models import Comment, Location, Post
 
 
-def test_empty_database_gets_five_posts_per_district_and_bounded_comments(
+def test_empty_database_gets_five_gangnam_posts_per_prefix(
     db_engine: Engine,
 ) -> None:
     session_factory = sessionmaker(bind=db_engine, expire_on_commit=False)
@@ -34,19 +34,18 @@ def test_empty_database_gets_five_posts_per_district_and_bounded_comments(
             )
         )
 
-    assert inserted == 125
-    assert len(posts) == 125
-    assert Counter(post.district for post in posts) == Counter(
-        {district: 5 for district in POST_DISTRICTS}
+    assert inserted == 35
+    assert len(posts) == 35
+    assert {post.district for post in posts} == {"강남구"}
+    assert Counter(post.prefix for post in posts) == Counter(
+        {prefix: 5 for prefix in POST_PREFIXES}
     )
-    assert set(post.prefix for post in posts) == set(POST_PREFIXES)
-    assert set(Counter(post.prefix for post in posts).values()) == {17, 18}
-    assert all(0 <= len(post.comments) <= 3 for post in posts)
-    assert {0, 3} <= {len(post.comments) for post in posts}
+    assert all(3 <= len(post.comments) <= 4 for post in posts)
+    assert {len(post.comments) for post in posts} == {3, 4}
     assert all(post.password == "mock1234" for post in posts)
     assert all(comment.password == "mock1234" for post in posts for comment in post.comments)
     assert [post.created_at for post in posts] == [
-        MOCK_DATA_STARTED_AT + timedelta(days=post_index) for post_index in range(125)
+        MOCK_DATA_STARTED_AT + timedelta(days=post_index) for post_index in range(35)
     ]
     assert all(comment.created_at > post.created_at for post in posts for comment in post.comments)
 
@@ -77,33 +76,50 @@ def test_repeated_reset_reproduces_the_same_data(db_engine: Engine) -> None:
     assert snapshot() == first_snapshot
 
 
-def test_reset_replaces_existing_posts_and_comments(db_engine: Engine) -> None:
+def test_reset_replaces_gangnam_and_preserves_other_districts(db_engine: Engine) -> None:
     session_factory = sessionmaker(bind=db_engine, expire_on_commit=False)
     existing_time = datetime(2024, 12, 31, tzinfo=UTC)
     with session_factory.begin() as session:
-        old_post = Post(
+        gangnam = Post(
             district="강남구",
             prefix="자유",
-            title="기존 게시글",
-            content="재시작하면 교체될 데이터",
+            title="기존 강남 게시글",
+            content="교체될 데이터",
             password="1234",
             created_at=existing_time,
             updated_at=existing_time,
         )
-        old_post.comments = [Comment(content="기존 댓글", password="1234")]
-        session.add(old_post)
+        gangnam.comments = [Comment(content="기존 강남 댓글", password="1234")]
+        mapo = Post(
+            district="마포구",
+            prefix="자유",
+            title="보존할 마포 게시글",
+            content="초기화 후에도 유지할 데이터",
+            password="1234",
+            created_at=existing_time,
+            updated_at=existing_time,
+        )
+        mapo.comments = [Comment(content="보존할 마포 댓글", password="1234")]
+        session.add_all([gangnam, mapo])
 
     inserted = reset_community_mock_data(session_factory)
 
     with session_factory() as session:
-        assert inserted == 125
-        assert session.scalar(select(func.count(Post.id))) == 125
-        assert session.scalar(select(func.count(Comment.id))) == sum(
-            len(seed.comments) for seed in COMMUNITY_MOCK_POSTS
-        )
+        assert inserted == 35
         assert session.scalar(
-            select(func.count()).select_from(Post).where(Post.title == "기존 게시글")
+            select(func.count()).select_from(Post).where(Post.district == "강남구")
+        ) == 35
+        assert session.scalar(
+            select(func.count()).select_from(Post).where(Post.title == "기존 강남 게시글")
         ) == 0
+        assert session.scalar(
+            select(func.count()).select_from(Post).where(Post.title == "보존할 마포 게시글")
+        ) == 1
+        assert session.scalar(
+            select(func.count())
+            .select_from(Comment)
+            .where(Comment.content == "보존할 마포 댓글")
+        ) == 1
 
 
 def test_failed_seed_rolls_back_every_post_and_comment(db_engine: Engine) -> None:
@@ -151,7 +167,9 @@ def test_startup_bootstraps_community_when_enabled(db_engine: Engine) -> None:
         pass
 
     with session_factory() as session:
-        assert session.scalar(select(func.count(Post.id))) == 125
+        assert session.scalar(
+            select(func.count()).select_from(Post).where(Post.district == "강남구")
+        ) == 35
 
 
 def test_reset_logs_counts_and_duration(
@@ -166,7 +184,7 @@ def test_reset_logs_counts_and_duration(
     record = next(
         record for record in caplog.records if record.message == "Community mock reset completed"
     )
-    assert record.inserted_posts == 125
+    assert record.inserted_posts == 35
     assert record.inserted_comments == sum(len(seed.comments) for seed in COMMUNITY_MOCK_POSTS)
     assert 0 <= record.elapsed_ms < 1000
 
@@ -206,7 +224,9 @@ def test_startup_replaces_existing_community_data_and_keeps_locations(
         pass
 
     with session_factory() as session:
-        assert session.scalar(select(func.count(Post.id))) == 125
+        assert session.scalar(
+            select(func.count()).select_from(Post).where(Post.district == "강남구")
+        ) == 35
         assert session.scalar(
             select(func.count()).select_from(Post).where(Post.title == "운영 게시글")
         ) == 0

@@ -6,6 +6,20 @@ from starlette.testclient import TestClient
 
 from app.models import Course, Location
 
+GANGNAM_DEMO_LOCATIONS = (
+    ("3076105", "문화시설", "코엑스 오디토리움", 127.058376, 37.512971),
+    ("2507822", "문화시설", "별마당도서관", 127.0591318945, 37.5118092746),
+    ("1984944", "쇼핑", "스타필드 코엑스몰", 127.0592179950, 37.5119175967),
+    ("1985821", "쇼핑", "파르나스몰", 127.0608845757, 37.5095984514),
+    (
+        "142769",
+        "숙박",
+        "그랜드 인터컨티넨탈 서울 파르나스",
+        127.0608845757,
+        37.5095984514,
+    ),
+)
+
 
 def seed_locations(db_session: Session) -> None:
     locations = [
@@ -34,6 +48,85 @@ def seed_locations(db_session: Session) -> None:
             )
         )
     db_session.commit()
+
+
+def seed_gangnam_demo_locations(db_session: Session) -> None:
+    for source_order, row in enumerate(GANGNAM_DEMO_LOCATIONS, start=1):
+        content_id, category, title, longitude, latitude = row
+        db_session.add(
+            Location(
+                content_id=content_id,
+                category=category,
+                title=title,
+                address1="서울특별시 강남구 영동대로 513",
+                district="강남구",
+                longitude=longitude,
+                latitude=latitude,
+                image_url="https://example.com/demo.jpg",
+                source_order=source_order,
+            )
+        )
+    db_session.commit()
+
+
+def test_gangnam_demo_request_returns_fixed_order(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    seed_gangnam_demo_locations(db_session)
+
+    response = client.post(
+        "/api/course-suggestions",
+        json={
+            "district": "강남구",
+            "categories": ["쇼핑", "문화시설", "숙박"],
+            "stop_count": 5,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [stop["location"]["content_id"] for stop in payload["stops"]] == [
+        "3076105",
+        "2507822",
+        "1984944",
+        "1985821",
+        "142769",
+    ]
+    assert [stop["location"]["category"] for stop in payload["stops"]] == [
+        "문화시설",
+        "문화시설",
+        "쇼핑",
+        "쇼핑",
+        "숙박",
+    ]
+    assert payload["stops"][0]["distance_from_previous_meters"] is None
+    assert payload["total_straight_line_distance_meters"] == sum(
+        stop["distance_from_previous_meters"] for stop in payload["stops"][1:]
+    )
+
+
+def test_gangnam_demo_request_rejects_missing_fixed_location(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    seed_gangnam_demo_locations(db_session)
+    missing = db_session.scalar(select(Location).where(Location.content_id == "142769"))
+    assert missing is not None
+    db_session.delete(missing)
+    db_session.commit()
+
+    response = client.post(
+        "/api/course-suggestions",
+        json={
+            "district": "강남구",
+            "categories": ["문화시설", "숙박", "쇼핑"],
+            "stop_count": 5,
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "COURSE_NOT_ENOUGH_LOCATIONS"
 
 
 def test_course_suggestion_balances_categories_and_returns_distances(
