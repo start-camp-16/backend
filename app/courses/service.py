@@ -4,6 +4,7 @@ from sqlalchemy import Select, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.courses.demo_presets import match_demo_course
+from app.courses.ranking_presets import COURSE_RANKING_PRESETS
 from app.courses.recommender import (
     CourseCandidate,
     has_valid_coordinates,
@@ -13,6 +14,8 @@ from app.courses.recommender import (
 from app.courses.schemas import (
     CourseCreate,
     CourseDetail,
+    CourseRankingItem,
+    CourseRankingResponse,
     CourseStopItem,
     CourseSuggestionRequest,
     CourseSuggestionResponse,
@@ -164,6 +167,40 @@ def suggest_course(
         stops=stops,
         total_straight_line_distance_meters=total,
     )
+
+
+def get_course_rankings(session: Session) -> CourseRankingResponse:
+    content_ids = tuple(
+        content_id
+        for preset in COURSE_RANKING_PRESETS
+        for content_id in preset.content_ids
+    )
+    rows = list(session.scalars(select(Location).where(Location.content_id.in_(content_ids))))
+    rows_by_content_id = {row.content_id: row for row in rows}
+    if len(rows_by_content_id) != len(set(content_ids)):
+        raise AppError(
+            status_code=500,
+            code="COURSE_RANKING_DATA_INCOMPLETE",
+            message="코스 랭킹 데이터를 불러올 수 없습니다.",
+        )
+
+    items: list[CourseRankingItem] = []
+    for preset in COURSE_RANKING_PRESETS:
+        locations = [rows_by_content_id[content_id] for content_id in preset.content_ids]
+        stops, total = _stops_and_total(locations)
+        thumbnail_url = next((row.image_url for row in locations if row.image_url), None)
+        items.append(
+            CourseRankingItem(
+                rank=preset.rank,
+                district=preset.district,
+                title=preset.title,
+                description=preset.description,
+                thumbnail_url=thumbnail_url,
+                stops=stops,
+                total_straight_line_distance_meters=total,
+            )
+        )
+    return CourseRankingResponse(items=items)
 
 
 def _course_query(public_id: str) -> Select[tuple[Course]]:

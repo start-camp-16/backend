@@ -3,11 +3,26 @@ from pathlib import Path
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.courses.ranking_presets import COURSE_RANKING_PRESETS
 from app.locations.importer import import_manifest
 from app.locations.recommendations import get_default_recommendations
 from app.locations.schemas import LocationCategory
 from app.locations.service import get_locations, get_rankings
 from app.models import Location
+
+
+def test_course_ranking_presets_match_imported_districts(db_session: Session):
+    import_manifest(db_session, Path("data/manifest.json"))
+
+    for preset in COURSE_RANKING_PRESETS:
+        rows = list(
+            db_session.scalars(
+                select(Location).where(Location.content_id.in_(preset.content_ids))
+            )
+        )
+
+        assert len(rows) == len(preset.content_ids)
+        assert all(row.district == preset.district for row in rows)
 
 
 def test_recommendations_match_imported_location_combinations(db_session: Session):

@@ -54,6 +54,20 @@ class CourseSuggestionResponse(BaseModel):
     total_straight_line_distance_meters: int
 
 
+class CourseRankingItem(BaseModel):
+    rank: int = Field(ge=1, le=5)
+    district: str
+    title: str
+    description: str
+    thumbnail_url: str | None
+    stops: list[CourseStopItem]
+    total_straight_line_distance_meters: int | None
+
+
+class CourseRankingResponse(BaseModel):
+    items: list[CourseRankingItem]
+
+
 class CourseCreate(StrictRequest):
     title: TrimmedTitle
     password: Password

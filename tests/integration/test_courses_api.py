@@ -1,9 +1,11 @@
 import json
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.testclient import TestClient
 
+from app.locations.importer import import_manifest
 from app.models import Course, Location
 
 GANGNAM_DEMO_LOCATIONS = (
@@ -19,6 +21,21 @@ GANGNAM_DEMO_LOCATIONS = (
         37.5095984514,
     ),
 )
+
+EXPECTED_COURSE_RANKING_IDS = [
+    ["126504", "130284", "2507822", "1984944", "142769"],
+    ["2553819", "2578284", "3082405", "2907142"],
+    ["970138", "970052", "132492", "143033"],
+    ["754052", "126498", "2003909", "3464755"],
+    ["1866427", "2989541", "2894600"],
+]
+EXPECTED_COURSE_RANKING_CATEGORIES = [
+    ["관광지", "관광지", "문화시설", "쇼핑", "숙박"],
+    ["레포츠", "쇼핑", "관광지", "숙박"],
+    ["관광지", "관광지", "쇼핑", "숙박"],
+    ["관광지", "관광지", "관광지", "숙박"],
+    ["문화시설", "문화시설", "쇼핑"],
+]
 
 
 def seed_locations(db_session: Session) -> None:
@@ -67,6 +84,74 @@ def seed_gangnam_demo_locations(db_session: Session) -> None:
             )
         )
     db_session.commit()
+
+
+def test_course_rankings_return_five_district_courses_in_fixed_order(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    import_manifest(db_session, Path("data/manifest.json"))
+    ranking_ids = [content_id for route in EXPECTED_COURSE_RANKING_IDS for content_id in route]
+    locations_by_id = {
+        location.content_id: location
+        for location in db_session.scalars(
+            select(Location).where(Location.content_id.in_(ranking_ids))
+        )
+    }
+    expected_thumbnails = []
+    for route in EXPECTED_COURSE_RANKING_IDS:
+        image_urls = [locations_by_id[content_id].image_url for content_id in route]
+        expected_thumbnails.append(next(image_url for image_url in image_urls if image_url))
+
+    response = client.get("/api/course-rankings")
+
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert [item["rank"] for item in items] == [1, 2, 3, 4, 5]
+    assert [item["district"] for item in items] == [
+        "강남구",
+        "마포구",
+        "서초구",
+        "송파구",
+        "노원구",
+    ]
+    assert [
+        [stop["location"]["content_id"] for stop in item["stops"]] for item in items
+    ] == EXPECTED_COURSE_RANKING_IDS
+    assert [
+        [stop["location"]["category"] for stop in item["stops"]] for item in items
+    ] == EXPECTED_COURSE_RANKING_CATEGORIES
+    assert [item["thumbnail_url"] for item in items] == expected_thumbnails
+    assert all(
+        [stop["position"] for stop in item["stops"]]
+        == list(range(1, len(item["stops"]) + 1))
+        for item in items
+    )
+    assert all(
+        item["total_straight_line_distance_meters"]
+        == sum(stop["distance_from_previous_meters"] for stop in item["stops"][1:])
+        for item in items
+    )
+
+
+def test_course_rankings_reject_incomplete_fixed_data(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    import_manifest(db_session, Path("data/manifest.json"))
+    missing = db_session.scalar(select(Location).where(Location.content_id == "126504"))
+    assert missing is not None
+    db_session.delete(missing)
+    db_session.commit()
+
+    response = client.get("/api/course-rankings")
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "code": "COURSE_RANKING_DATA_INCOMPLETE",
+        "message": "코스 랭킹 데이터를 불러올 수 없습니다.",
+        "details": None,
+    }
 
 
 def test_gangnam_demo_request_returns_fixed_order(

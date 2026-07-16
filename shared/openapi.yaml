@@ -87,6 +87,21 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '500':
           $ref: '#/components/responses/InternalError'
+  /api/course-rankings:
+    get:
+      tags: [Courses]
+      summary: 서울 고정 코스 랭킹 조회
+      description: 강남구, 마포구, 서초구, 송파구, 노원구의 고정 코스 5개를 반환합니다.
+      operationId: getCourseRankings
+      responses:
+        '200':
+          description: 서울 코스 랭킹
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseRankingResponse'
+        '500':
+          $ref: '#/components/responses/CourseRankingDataIncomplete'
   /api/course-suggestions:
     post:
       tags: [Courses]
@@ -590,6 +605,16 @@ components:
             code: LOCATION_NOT_FOUND
             message: 장소를 찾을 수 없습니다.
             details: null
+    CourseRankingDataIncomplete:
+      description: 고정 코스 장소 데이터 누락
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: COURSE_RANKING_DATA_INCOMPLETE
+            message: 코스 랭킹 데이터를 불러올 수 없습니다.
+            details: null
     ChatRateLimited:
       description: 챗봇 호출 제한
       content:
@@ -782,6 +807,49 @@ components:
           minimum: 0
         location:
           $ref: '#/components/schemas/LocationItem'
+    CourseRankingItem:
+      type: object
+      required:
+        - rank
+        - district
+        - title
+        - description
+        - thumbnail_url
+        - stops
+        - total_straight_line_distance_meters
+      properties:
+        rank:
+          type: integer
+          minimum: 1
+          maximum: 5
+        district:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        thumbnail_url:
+          type: [string, 'null']
+          format: uri
+        stops:
+          type: array
+          minItems: 3
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/CourseStop'
+        total_straight_line_distance_meters:
+          type: [integer, 'null']
+          minimum: 0
+    CourseRankingResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 5
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/CourseRankingItem'
     CourseSuggestionResponse:
       type: object
       required: [district, categories, stops, total_straight_line_distance_meters]
