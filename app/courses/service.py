@@ -3,6 +3,7 @@ from uuid import uuid4
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.courses.demo_presets import match_demo_course
 from app.courses.recommender import (
     CourseCandidate,
     has_valid_coordinates,
@@ -51,6 +52,25 @@ def _candidate(location: Location, curated_rank: int | None) -> CourseCandidate:
     )
 
 
+def _course_not_enough_locations() -> AppError:
+    return AppError(
+        status_code=400,
+        code="COURSE_NOT_ENOUGH_LOCATIONS",
+        message="조건에 맞는 장소가 부족합니다.",
+    )
+
+
+def _demo_course_locations(
+    session: Session,
+    content_ids: tuple[str, ...],
+) -> list[Location]:
+    rows = list(session.scalars(select(Location).where(Location.content_id.in_(content_ids))))
+    rows_by_content_id = {row.content_id: row for row in rows}
+    if len(rows_by_content_id) != len(content_ids):
+        raise _course_not_enough_locations()
+    return [rows_by_content_id[content_id] for content_id in content_ids]
+
+
 def _stops_and_total(locations: list[Location]) -> tuple[list[CourseStopItem], int | None]:
     stops: list[CourseStopItem] = []
     total = 0
@@ -91,6 +111,22 @@ def suggest_course(
     payload: CourseSuggestionRequest,
 ) -> CourseSuggestionResponse:
     category_values = [category.value for category in payload.categories]
+    demo_content_ids = match_demo_course(
+        payload.district,
+        category_values,
+        payload.stop_count,
+    )
+    if demo_content_ids is not None:
+        selected_rows = _demo_course_locations(session, demo_content_ids)
+        stops, total = _stops_and_total(selected_rows)
+        assert total is not None
+        return CourseSuggestionResponse(
+            district=payload.district,
+            categories=payload.categories,
+            stops=stops,
+            total_straight_line_distance_meters=total,
+        )
+
     rows = list(
         session.scalars(
             select(Location).where(
@@ -116,11 +152,7 @@ def suggest_course(
             stop_count=payload.stop_count,
         )
     except ValueError as exc:
-        raise AppError(
-            status_code=400,
-            code="COURSE_NOT_ENOUGH_LOCATIONS",
-            message="조건에 맞는 장소가 부족합니다.",
-        ) from exc
+        raise _course_not_enough_locations() from exc
 
     rows_by_content_id = {row.content_id: row for row in rows}
     selected_rows = [rows_by_content_id[item.content_id] for item in selected]
