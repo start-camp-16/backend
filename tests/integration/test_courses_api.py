@@ -29,6 +29,13 @@ EXPECTED_COURSE_RANKING_IDS = [
     ["754052", "126498", "2003909", "3464755"],
     ["1866427", "2989541", "2894600"],
 ]
+EXPECTED_COURSE_RANKING_CATEGORIES = [
+    ["관광지", "관광지", "문화시설", "쇼핑", "숙박"],
+    ["레포츠", "쇼핑", "관광지", "숙박"],
+    ["관광지", "관광지", "쇼핑", "숙박"],
+    ["관광지", "관광지", "관광지", "숙박"],
+    ["문화시설", "문화시설", "쇼핑"],
+]
 
 
 def seed_locations(db_session: Session) -> None:
@@ -84,6 +91,17 @@ def test_course_rankings_return_five_district_courses_in_fixed_order(
     db_session: Session,
 ) -> None:
     import_manifest(db_session, Path("data/manifest.json"))
+    ranking_ids = [content_id for route in EXPECTED_COURSE_RANKING_IDS for content_id in route]
+    locations_by_id = {
+        location.content_id: location
+        for location in db_session.scalars(
+            select(Location).where(Location.content_id.in_(ranking_ids))
+        )
+    }
+    expected_thumbnails = []
+    for route in EXPECTED_COURSE_RANKING_IDS:
+        image_urls = [locations_by_id[content_id].image_url for content_id in route]
+        expected_thumbnails.append(next(image_url for image_url in image_urls if image_url))
 
     response = client.get("/api/course-rankings")
 
@@ -100,7 +118,10 @@ def test_course_rankings_return_five_district_courses_in_fixed_order(
     assert [
         [stop["location"]["content_id"] for stop in item["stops"]] for item in items
     ] == EXPECTED_COURSE_RANKING_IDS
-    assert all(item["thumbnail_url"] for item in items)
+    assert [
+        [stop["location"]["category"] for stop in item["stops"]] for item in items
+    ] == EXPECTED_COURSE_RANKING_CATEGORIES
+    assert [item["thumbnail_url"] for item in items] == expected_thumbnails
     assert all(
         [stop["position"] for stop in item["stops"]]
         == list(range(1, len(item["stops"]) + 1))
@@ -126,7 +147,11 @@ def test_course_rankings_reject_incomplete_fixed_data(
     response = client.get("/api/course-rankings")
 
     assert response.status_code == 500
-    assert response.json()["code"] == "COURSE_RANKING_DATA_INCOMPLETE"
+    assert response.json() == {
+        "code": "COURSE_RANKING_DATA_INCOMPLETE",
+        "message": "코스 랭킹 데이터를 불러올 수 없습니다.",
+        "details": None,
+    }
 
 
 def test_gangnam_demo_request_returns_fixed_order(

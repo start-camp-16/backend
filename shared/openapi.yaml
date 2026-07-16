@@ -101,7 +101,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/CourseRankingResponse'
         '500':
-          $ref: '#/components/responses/InternalError'
+          $ref: '#/components/responses/CourseRankingDataIncomplete'
   /api/course-suggestions:
     post:
       tags: [Courses]
@@ -604,6 +604,16 @@ components:
           example:
             code: LOCATION_NOT_FOUND
             message: 장소를 찾을 수 없습니다.
+            details: null
+    CourseRankingDataIncomplete:
+      description: 고정 코스 장소 데이터 누락
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: COURSE_RANKING_DATA_INCOMPLETE
+            message: 코스 랭킹 데이터를 불러올 수 없습니다.
             details: null
     ChatRateLimited:
       description: 챗봇 호출 제한
