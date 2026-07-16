@@ -7,6 +7,7 @@ from app.courses.schemas import (
     CourseCreate,
     CourseDetail,
     CoursePasswordRequest,
+    CourseRankingResponse,
     CourseSuggestionRequest,
     CourseSuggestionResponse,
     CourseUpdate,
@@ -15,6 +16,7 @@ from app.courses.service import (
     create_course,
     delete_course,
     get_course,
+    get_course_rankings,
     suggest_course,
     update_course,
 )
@@ -22,6 +24,17 @@ from app.db import get_db
 
 router = APIRouter(prefix="/api")
 PublicIdPath = Annotated[str, Path(min_length=32, max_length=32, pattern=r"^[0-9a-f]{32}$")]
+
+
+@router.get(
+    "/course-rankings",
+    response_model=CourseRankingResponse,
+    operation_id="getCourseRankings",
+)
+def rankings(
+    session: Annotated[Session, Depends(get_db)],
+) -> CourseRankingResponse:
+    return get_course_rankings(session)
 
 
 @router.post(
